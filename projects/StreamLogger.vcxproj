@@ -167,6 +167,7 @@
   <ItemGroup>
     <ClCompile Include="..\src\lggrDllmain.cpp" />
     <ClCompile Include="..\src\StreamLogger.cpp" />
+    <ClCompile Include="ConsoleLog.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

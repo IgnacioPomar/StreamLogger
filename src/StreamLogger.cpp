@@ -12,10 +12,16 @@
 #include <string>
 #include <list>
 
+
+
 #include "StreamLogger.h"
 
 namespace StreamLogger
 {
+	void setConsoleColor(LogColor color);
+	void resetConsoleColor();
+
+
 	//--------------  Static values ----------------
 	const std::string logLevelNames [6] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 	BaseStreamLogger trace (LogLevel::TRACE);
@@ -80,6 +86,9 @@ namespace StreamLogger
 		return logLevelNames [static_cast<int>(logLevel)];
 	}
 
+
+
+
 	//--------------  Real function class ----------------
 	/**
 	* Contain the info for a single event
@@ -113,11 +122,13 @@ namespace StreamLogger
 		StackLogger (StackLogger&&) = delete; // no move constructor
 		StackLogger& operator=(StackLogger&&) = delete; // no move assignments
 
+
 	public:
 		StackLogger ();
 		//~StackLogger ();
 
-		void add (LogLevel logLevel, const std::string& event);
+		void log(LogLevel logLevel, const std::string& event);
+		
 
 		void sendEvents (LogEventsReceiver& receiver, LogLevel logLevel);
 
@@ -144,35 +155,64 @@ namespace StreamLogger
 			}
 		}
 	}
-	void StackLogger::add (LogLevel logLevel, const  std::string& event)
+
+
+
+
+	void StackLogger::log(LogLevel logLevel, const std::string& event)
 	{
-		EventContainer newEvent;
-
-		auto now = std::chrono::system_clock::now ();
-		//#if __cplusplus >= 202002L
-#if true
-		newEvent.date = format ("{}", now);
-#else
-		auto in_time_t = std::chrono::system_clock::to_time_t (now);
-		struct tm buf;
-		gmtime_s (&buf, &in_time_t);
-		char str [100];
-		strftime ((char*) str, sizeof (str), "%F %T UTC", &buf);
-
-		newEvent.date = str;
-#endif
-
-
-		newEvent.event = event;
-		newEvent.logLevel = logLevel;
-
-		events.push_back (newEvent);
-
-		if (events.size () > maxStoredEvents)
+		if (logLevel >= consoleLevel || logLevel >= fileLevel || logLevel >= stackLevel)
 		{
-			events.pop_front ();
+			EventContainer tmpEvent;
+			EventContainer &newEvent = (logLevel >= stackLevel)? events.emplace_back() : tmpEvent;
+
+			//---- Fill the event ----
+			newEvent.event = event;
+			newEvent.logLevel = logLevel;
+
+			auto now = std::chrono::system_clock::now();
+//#if __cplusplus >= 202002L
+#if true
+			newEvent.date = format("{}", now);
+#else
+			auto in_time_t = std::chrono::system_clock::to_time_t(now);
+			struct tm buf;
+			gmtime_s(&buf, &in_time_t);
+			char str[100];
+			strftime((char*)str, sizeof(str), "%F %T UTC", &buf);
+
+			newEvent.date = str;
+#endif
+			//---- Fill the event: End ----
+
+			//Send to console
+			if (logLevel >= consoleLevel)
+			{
+				LogColor lc = levelColors[static_cast<int>(logLevel)];
+
+				setConsoleColor(lc);
+				std::cout << newEvent.date << " [" << getLevelName(logLevel) << "]\t";
+				std::cout << event << std::endl;
+				resetConsoleColor();
+			}
+
+			//Send to file
+			if (logLevel >= fileLevel)
+			{
+				//TODO:
+			}
+
+			if (logLevel >= stackLevel)
+			{
+				//We have already inserted onne, so if we are over the limit, we need to remove the oldest
+				if (events.size() > maxStoredEvents)
+				{
+					events.pop_front();
+				}
+			}
 		}
 	}
+
 
 	//-------------- LogMessageBuilder ----------------
 	/**
@@ -225,26 +265,12 @@ namespace StreamLogger
 	{
 	}
 
+	
+
+
 	void BaseStreamLogger::log (const std::string& message)
 	{
-		//Send to console
-		if (level >= consoleLevel)
-		{
-			std::cout << message << std::endl;
-			//TODO: 
-		}
-
-		//Send to file
-		if (level >= fileLevel)
-		{
-			//TODO:
-		}
-
-		//Send to stack
-		if (level >= stackLevel)
-		{
-			stackLogger.add (level, message);
-		}
+		stackLogger.log(level, message);
 	}
 
 

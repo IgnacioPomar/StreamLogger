@@ -36,8 +36,9 @@ namespace StreamLogger
 		BLACK,		//Not to use, it wold display invisible text
 		WHITE,
 		GREY,
-		LIGHTGREY,
+		//DARKGREY,
 		RED,
+		LIGHTRED,
 		GREEN,
 		YELLOW,
 		BLUE,
@@ -51,12 +52,12 @@ namespace StreamLogger
 	{
 		inline constexpr const char* FILE_NAME = "%d_StreamedLog.log";
 
-		inline constexpr LogColor COLOR_DEBUG = LogColor::GREY;
-		inline constexpr LogColor COLOR_TRACE = LogColor::LIGHTGREY;
-		inline constexpr LogColor COLOR_INFO = LogColor::WHITE;
+		inline constexpr LogColor COLOR_DEBUG = LogColor::WHITE;
+		inline constexpr LogColor COLOR_TRACE = LogColor::GREY;
+		inline constexpr LogColor COLOR_INFO = LogColor::CYAN;
 		inline constexpr LogColor COLOR_WARN = LogColor::YELLOW;
 		inline constexpr LogColor COLOR_ERROR = LogColor::RED;
-		inline constexpr LogColor COLOR_FATAL = LogColor::RED;
+		inline constexpr LogColor COLOR_FATAL = LogColor::MAGENTA;
 
 		inline constexpr LogLevel CONSOLE_LEVEL = LogLevel::INFO;
 		inline constexpr LogLevel FILE_LEVEL = LogLevel::INFO;
