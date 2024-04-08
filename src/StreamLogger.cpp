@@ -168,6 +168,23 @@ namespace StreamLogger
 		
 
 		//Yagni: consider extract fill and send to a external function so we don create the temporary object	
+		/*
+		if (logLevel >= stackLevel)
+		{
+			EventContainer &newEvent = events.emplace_back();
+			fillAndSendEvent(newEvent, logLevel, event);
+			if (events.size() > maxStoredEvents)
+			{
+				events.pop_front();
+			}
+		}
+		else if (logLevel >= consoleLevel || logLevel >= fileLevel)
+		{
+			EventContainer newEvent;
+			fillAndSendEvent(newEvent, logLevel, event);
+		}
+
+		*/
 		EventContainer tmpEvent;
 		EventContainer &newEvent = (logLevel >= stackLevel)? events.emplace_back() : tmpEvent;
 
