@@ -89,7 +89,6 @@ namespace StreamLogger
 	}
 	void resetConsoleColor()
 	{
-
 		SetConsoleTextAttribute(GetConsoleHandle(), FOREGROUND_WHITE);
 	}
 } // namespace StreamLogger
