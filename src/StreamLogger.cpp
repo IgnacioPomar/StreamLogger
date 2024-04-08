@@ -1,3 +1,9 @@
+/*********************************************************************************************
+*	Name		: StreamLogger.h
+*	Description	: Stream logger Implementation
+*	Copyright	(C) 2024  Ignacio Pomar Ballestero
+********************************************************************************************/
+
 
 #include <filesystem>
 #include <chrono>

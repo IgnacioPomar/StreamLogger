@@ -1,6 +1,18 @@
 #include <iostream>
 #include "StreamLogger.h"
 
+
+
+#ifdef _DEBUG 
+#define END_LIB_STD "d.lib"
+#else
+#define END_LIB_STD ".lib"
+#endif
+
+#pragma comment(lib, "StreamLogger" END_LIB_STD)
+
+
+
 namespace lggr = StreamLogger;
 
 class Receiver : public lggr::LogEventsReceiver
@@ -21,6 +33,12 @@ int main ()
 	lggr::Config::setStackLevel (lggr::info);
 	lggr::Config::setConsoleLevel (lggr::trace);
 
+	lggr::trace << "trace";
+	lggr::debug << "debug";
+	lggr::info << "info";
+	lggr::warn << "warn";
+	lggr::error << "error";
+	lggr::fatal << "fatal";
 
 	lggr::info << "Number: " << 33 << "\tdouble: " << .5;
 
