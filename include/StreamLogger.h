@@ -107,7 +107,6 @@ namespace StreamLogger
 		LGGR_API LogMessageBuilder& operator<<(double value);
 
 	private:
-		bool sendToLog;
 		BaseStreamLogger& logger;
 
 		//YAGNI: consider use a stringStream, but, worth to add additioonal dependencies?
@@ -125,7 +124,7 @@ namespace StreamLogger
 		LogMessageBuilder operator<<(int value);
 		LogMessageBuilder operator<<(double value);
 
-		void log (const std::string& message);
+		void log (std::string& message);
 	};
 
 	extern LGGR_API BaseStreamLogger trace;

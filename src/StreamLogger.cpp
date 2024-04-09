@@ -127,7 +127,7 @@ namespace StreamLogger
 		StackLogger ();
 		//~StackLogger ();
 
-		void log(LogLevel logLevel, const std::string& event);
+		void log(LogLevel logLevel, std::string& event);
 		
 
 		void sendEvents (LogEventsReceiver& receiver, LogLevel logLevel);
@@ -159,7 +159,7 @@ namespace StreamLogger
 
 
 
-	void StackLogger::log(LogLevel logLevel, const std::string& event)
+	void StackLogger::log(LogLevel logLevel, std::string& event)
 	{
 		if (!(logLevel >= consoleLevel || logLevel >= fileLevel || logLevel >= stackLevel))
 		{
@@ -189,7 +189,7 @@ namespace StreamLogger
 		EventContainer &newEvent = (logLevel >= stackLevel)? events.emplace_back() : tmpEvent;
 
 		//---- Fill the event ----
-		newEvent.event = event;
+		newEvent.event = std::move(event);
 		newEvent.logLevel = logLevel;
 
 		auto now = std::chrono::system_clock::now();
@@ -242,7 +242,6 @@ namespace StreamLogger
 	*/
 	LogMessageBuilder::LogMessageBuilder (BaseStreamLogger& logger) : logger (logger)
 	{
-		sendToLog = true;
 	}
 
 	/**
@@ -251,9 +250,6 @@ namespace StreamLogger
 	LogMessageBuilder::LogMessageBuilder (LogMessageBuilder&& other) noexcept
 		: logger (other.logger), message (std::move (other.message))
 	{
-		// Move constructor logic here
-		sendToLog = true;
-		other.sendToLog = false;
 	}
 
 	/**
@@ -263,7 +259,9 @@ namespace StreamLogger
 	{
 		// If using string stream
 		//logger.log (stream.str ());
-		if (sendToLog) logger.log (message);
+
+		//As long as message moves to child, we only send it if it is not empty
+		if (!message.empty()) logger.log (message);
 	}
 
 	LogMessageBuilder& LogMessageBuilder::operator<<(const std::string& s)
@@ -290,7 +288,7 @@ namespace StreamLogger
 	
 
 
-	void BaseStreamLogger::log (const std::string& message)
+	void BaseStreamLogger::log (std::string& message)
 	{
 		stackLogger.log(level, message);
 	}
