@@ -1,36 +1,31 @@
 /*********************************************************************************************
-*	Name		: StreamLogger.h
-*	Description	: Stream logger Implementation
-*	Copyright	(C) 2024  Ignacio Pomar Ballestero
-********************************************************************************************/
+ *	Name		: StreamLogger.h
+ *	Description	: Stream logger Implementation
+ *	Copyright	(C) 2024  Ignacio Pomar Ballestero
+ ********************************************************************************************/
 
-
-#include <filesystem>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <string>
 #include <list>
-
-
+#include <string>
 
 #include "StreamLogger.h"
 
 namespace StreamLogger
 {
-	void setConsoleColor(LogColor color);
-	void resetConsoleColor();
-
+	void setConsoleColor (LogColor color);
+	void resetConsoleColor ();
 
 	//--------------  Static values ----------------
-	const std::string logLevelNames[6] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
-	BaseStreamLogger trace(LogLevel::TRACE);
-	BaseStreamLogger debug(LogLevel::DEBUG);
-	BaseStreamLogger info(LogLevel::INFO);
-	BaseStreamLogger warn(LogLevel::WARN);
-	BaseStreamLogger error(LogLevel::ERROR);
-	BaseStreamLogger fatal(LogLevel::FATAL);
-
+	const std::string logLevelNames [6] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+	BaseStreamLogger trace (LogLevel::TRACE);
+	BaseStreamLogger debug (LogLevel::DEBUG);
+	BaseStreamLogger info (LogLevel::INFO);
+	BaseStreamLogger warn (LogLevel::WARN);
+	BaseStreamLogger error (LogLevel::ERROR);
+	BaseStreamLogger fatal (LogLevel::FATAL);
 
 	//--------------  Configuration Vars ----------------
 	bool rotateByDay = true;
@@ -39,277 +34,259 @@ namespace StreamLogger
 
 	int stackSize = DEFAULTS::STACK_SIZE;
 
-
-	LogColor levelColors[6] = {DEFAULTS::COLOR_TRACE, DEFAULTS::COLOR_DEBUG, DEFAULTS::COLOR_INFO, DEFAULTS::COLOR_WARN, DEFAULTS::COLOR_ERROR, DEFAULTS::COLOR_FATAL};
+	LogColor levelColors [6] = {DEFAULTS::COLOR_TRACE, DEFAULTS::COLOR_DEBUG, DEFAULTS::COLOR_INFO,
+	                            DEFAULTS::COLOR_WARN,  DEFAULTS::COLOR_ERROR, DEFAULTS::COLOR_FATAL};
 
 	LogLevel consoleLevel = DEFAULTS::CONSOLE_LEVEL;
-	LogLevel fileLevel = DEFAULTS::FILE_LEVEL;
-	LogLevel stackLevel = DEFAULTS::STACK_LEVEL;
-
+	LogLevel fileLevel    = DEFAULTS::FILE_LEVEL;
+	LogLevel stackLevel   = DEFAULTS::STACK_LEVEL;
 
 	//--------------  Configuration functions ----------------
-	void Config::setLevelColor(LogLevel logLevel, LogColor logColor)
+	void Config::setLevelColor (LogLevel logLevel, LogColor logColor)
 	{
-		levelColors[static_cast<int>(logLevel)] = logColor;
+		levelColors [static_cast<int> (logLevel)] = logColor;
 	}
 
-
-
-	void Config::setConsoleLevel(LogLevel logLevel)
+	void Config::setConsoleLevel (LogLevel logLevel)
 	{
 		consoleLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
 	}
-	void Config::setFileLevel(LogLevel logLevel)
+	void Config::setFileLevel (LogLevel logLevel)
 	{
 		fileLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
 	}
-	void Config::setStackLevel(LogLevel logLevel)
+	void Config::setStackLevel (LogLevel logLevel)
 	{
 		stackLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
 	}
 
 	//--------------   Utility Functions ----------------
-	const std::string& getLevelName(LogLevel logLevel)
+	const std::string &getLevelName (LogLevel logLevel)
 	{
-		return logLevelNames[static_cast<int>(logLevel)];
+		return logLevelNames [static_cast<int> (logLevel)];
 	}
-
-
-
 
 	//--------------  Real function class ----------------
 	/**
-	* Contain the info for a single event
-	*/
+	 * Contain the info for a single event
+	 */
 	class EventContainer
 	{
-	public:
-		//Storing the date as a string to avoid reformating each time we send it
-		// Or, should we store it as chrono::time_point?
-		std::string date;
-		std::string event;
-		LogLevel logLevel;
+		public:
+			// Storing the date as a string to avoid reformating each time we send it
+			//  Or, should we store it as chrono::time_point?
+			std::string date;
+			std::string event;
+			LogLevel logLevel;
 	};
 
 	/**
-	* A logger wich stores the events in a stack
-	*/
+	 * A logger wich stores the events in a stack
+	 */
 	class StackLogger
 	{
-	private:
-		std::list<EventContainer> events;
+		private:
+			std::list<EventContainer> events;
 
-		std::ofstream logfile;
+			std::ofstream logfile;
 
-		unsigned int maxStoredEvents;
+			unsigned int maxStoredEvents;
 
+			// Prevent illegal usage
+			StackLogger (const StackLogger &)            = delete;    // no copies
+			StackLogger &operator= (const StackLogger &) = delete;    // no self-assignments
+			StackLogger (StackLogger &&)                 = delete;    // no move constructor
+			StackLogger &operator= (StackLogger &&)      = delete;    // no move assignments
 
-		//Prevent illegal usage
-		StackLogger(const StackLogger&) = delete; // no copies
-		StackLogger& operator=(const StackLogger&) = delete; // no self-assignments
-		StackLogger(StackLogger&&) = delete; // no move constructor
-		StackLogger& operator=(StackLogger&&) = delete; // no move assignments
+		public:
+			StackLogger();
+			//~StackLogger ();
 
+			void log (LogLevel logLevel, std::string &event);
 
-	public:
-		StackLogger();
-		//~StackLogger ();
+			void sendEvents (LogEventsReceiver &receiver, LogLevel logLevel);
 
-		void log(LogLevel logLevel, std::string& event);
-
-
-		void sendEvents(LogEventsReceiver& receiver, LogLevel logLevel);
-
-
-		void delLogsOltherThan(int maxLogFileDays);
+			void delLogsOltherThan (int maxLogFileDays);
 	};
-
 
 	StackLogger stackLogger;
 
-
-	StackLogger::StackLogger() : maxStoredEvents(stackSize)
+	StackLogger::StackLogger()
+	    : maxStoredEvents (stackSize)
 	{
 	}
 
-
-	void StackLogger::sendEvents(LogEventsReceiver& receiver, LogLevel logLevel)
+	void StackLogger::sendEvents (LogEventsReceiver &receiver, LogLevel logLevel)
 	{
-		for (auto& event : events)
+		for (auto &event : events)
 		{
 			if (event.logLevel >= logLevel)
 			{
-				receiver.receive(event.date, event.event, event.logLevel);
+				receiver.receive (event.date, event.event, event.logLevel);
 			}
 		}
 	}
 
-
-
-
-	void StackLogger::log(LogLevel logLevel, std::string& event)
+	void StackLogger::log (LogLevel logLevel, std::string &event)
 	{
 		if (!(logLevel >= consoleLevel || logLevel >= fileLevel || logLevel >= stackLevel))
 		{
 			return;
 		}
 
-
-		//Yagni: consider extract fill and send to a external function so we don create the temporary object	
+		// Yagni: consider extract fill and send to a external function so we don
+		// create the temporary object
 		/*
 		if (logLevel >= stackLevel)
 		{
-			EventContainer &newEvent = events.emplace_back();
-			fillAndSendEvent(newEvent, logLevel, event);
-			if (events.size() > maxStoredEvents)
-			{
-				events.pop_front();
-			}
+		        EventContainer &newEvent = events.emplace_back();
+		        fillAndSendEvent(newEvent, logLevel, event);
+		        if (events.size() > maxStoredEvents)
+		        {
+		                events.pop_front();
+		        }
 		}
 		else if (logLevel >= consoleLevel || logLevel >= fileLevel)
 		{
-			EventContainer newEvent;
-			fillAndSendEvent(newEvent, logLevel, event);
+		        EventContainer newEvent;
+		        fillAndSendEvent(newEvent, logLevel, event);
 		}
 
 		*/
 		EventContainer tmpEvent;
-		EventContainer& newEvent = (logLevel >= stackLevel) ? events.emplace_back() : tmpEvent;
+		EventContainer &newEvent = (logLevel >= stackLevel) ? events.emplace_back() : tmpEvent;
 
 		//---- Fill the event ----
-		newEvent.event = std::move(event);
+		newEvent.event    = std::move (event);
 		newEvent.logLevel = logLevel;
 
 		auto now = std::chrono::system_clock::now();
-		//#if __cplusplus >= 202002L
+		// #if __cplusplus >= 202002L
 #if true
-		newEvent.date = format("{}", now);
+		newEvent.date = format ("{}", now);
 #else
-		auto in_time_t = std::chrono::system_clock::to_time_t(now);
+		auto in_time_t = std::chrono::system_clock::to_time_t (now);
 		struct tm buf;
-		gmtime_s(&buf, &in_time_t);
-		char str[100];
-		strftime((char*) str, sizeof(str), "%F %T UTC", &buf);
+		gmtime_s (&buf, &in_time_t);
+		char str [100];
+		strftime ((char *) str, sizeof (str), "%F %T UTC", &buf);
 
 		newEvent.date = str;
 #endif
 		//---- Fill the event: End ----
 
-		//Send to console
+		// Send to console
 		if (logLevel >= consoleLevel)
 		{
-			LogColor lc = levelColors[static_cast<int>(logLevel)];
+			LogColor lc = levelColors [static_cast<int> (logLevel)];
 
-			setConsoleColor(lc);
-			std::cout << newEvent.date << " [" << getLevelName(logLevel) << "]\t";
+			setConsoleColor (lc);
+			std::cout << newEvent.date << " [" << getLevelName (logLevel) << "]\t";
 			std::cout << event << std::endl;
 			resetConsoleColor();
 		}
 
-		//Send to file
+		// Send to file
 		if (logLevel >= fileLevel)
 		{
-			//TODO:
+			// TODO:
 		}
 
 		if (logLevel >= stackLevel)
 		{
-			//We have already inserted onne, so if we are over the limit, we need to remove the oldest
+			// We have already inserted onne, so if we are over the limit, we need to
+			// remove the oldest
 			if (events.size() > maxStoredEvents)
 			{
 				events.pop_front();
 			}
 		}
-
 	}
-
 
 	//-------------- LogMessageBuilder ----------------
 	/**
-	* Constructor
-	*/
-	LogMessageBuilder::LogMessageBuilder(BaseStreamLogger& logger) : logger(logger)
+	 * Constructor
+	 */
+	LogMessageBuilder::LogMessageBuilder (BaseStreamLogger &logger)
+	    : logger (logger)
 	{
 	}
 
 	/**
-	* Move constructor
-	*/
-	LogMessageBuilder::LogMessageBuilder(LogMessageBuilder&& other) noexcept
-		: logger(other.logger), message(std::move(other.message))
+	 * Move constructor
+	 */
+	LogMessageBuilder::LogMessageBuilder (LogMessageBuilder &&other) noexcept
+	    : logger (other.logger)
+	    , message (std::move (other.message))
 	{
 	}
 
 	/**
-	* Destructor, log the message
-	*/
+	 * Destructor, log the message
+	 */
 	LogMessageBuilder::~LogMessageBuilder()
 	{
 		// If using string stream
-		//logger.log (stream.str ());
+		// logger.log (stream.str ());
 
-		//As long as message moves to child, we only send it if it is not empty
-		if (!message.empty()) logger.log(message);
+		// As long as message moves to child, we only send it if it is not empty
+		if (!message.empty())
+		{
+			logger.log (message);
+		}
 	}
 
-	LogMessageBuilder& LogMessageBuilder::operator<<(const std::string& s)
+	LogMessageBuilder &LogMessageBuilder::operator<< (const std::string &s)
 	{
-		this->message.append(s);
+		this->message.append (s);
 		return *this;
 	}
-	LogMessageBuilder& LogMessageBuilder::operator<<(int value)
+	LogMessageBuilder &LogMessageBuilder::operator<< (int value)
 	{
-		this->message.append(std::to_string(value));
+		this->message.append (std::to_string (value));
 		return *this;
 	}
-	LogMessageBuilder& LogMessageBuilder::operator<<(double value)
+	LogMessageBuilder &LogMessageBuilder::operator<< (double value)
 	{
-		this->message.append(std::to_string(value));
+		this->message.append (std::to_string (value));
 		return *this;
 	}
 
 	//-------------- BaseStreamLogger ----------------
-	BaseStreamLogger::BaseStreamLogger(LogLevel level) : level(level)
+	BaseStreamLogger::BaseStreamLogger (LogLevel level)
+	    : level (level)
 	{
 	}
 
-
-
-
-	void BaseStreamLogger::log(std::string& message)
+	void BaseStreamLogger::log (std::string &message)
 	{
-		stackLogger.log(level, message);
+		stackLogger.log (level, message);
 	}
 
-
-	LogMessageBuilder BaseStreamLogger::operator<<(const std::string& value)
+	LogMessageBuilder BaseStreamLogger::operator<< (const std::string &value)
 	{
-		LogMessageBuilder tmpBuilder(*this);
+		LogMessageBuilder tmpBuilder (*this);
 		tmpBuilder << value;
-		return std::move(tmpBuilder);
+		return std::move (tmpBuilder);
 	}
-	LogMessageBuilder BaseStreamLogger::operator<<(int value)
+	LogMessageBuilder BaseStreamLogger::operator<< (int value)
 	{
-		LogMessageBuilder tmpBuilder(*this);
+		LogMessageBuilder tmpBuilder (*this);
 		tmpBuilder << value;
-		return std::move(tmpBuilder);
+		return std::move (tmpBuilder);
 	}
-	LogMessageBuilder BaseStreamLogger::operator<<(double value)
+	LogMessageBuilder BaseStreamLogger::operator<< (double value)
 	{
-		LogMessageBuilder tmpBuilder(*this);
+		LogMessageBuilder tmpBuilder (*this);
 		tmpBuilder << value;
-		return std::move(tmpBuilder);
+		return std::move (tmpBuilder);
 	}
 
 	//-------------- Event retransmission ----------------
 
-	void retrieveLogEvents(LogEventsReceiver& receiver, const LogLevel logLevel)
+	void retrieveLogEvents (LogEventsReceiver &receiver, const LogLevel logLevel)
 	{
-		stackLogger.sendEvents(receiver, logLevel);
+		stackLogger.sendEvents (receiver, logLevel);
 	}
 
-
-
-
-
-}
+}    // namespace StreamLogger
