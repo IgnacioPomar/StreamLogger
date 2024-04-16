@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include "StreamLogger.h"
 
 
@@ -18,20 +18,22 @@ namespace lggr = StreamLogger;
 class Receiver : public lggr::LogEventsReceiver
 {
 public:
-	void receive (const std::string& date, const std::string logTxt, lggr::LogLevel logLevel)
+	void receive(const std::string& date, const std::string logTxt, lggr::LogLevel logLevel)
 	{
-		std::cout << date << " " << logTxt << " " << lggr::getLevelName (logLevel) << std::endl;
+		std::cout << date << " " << logTxt << " " << lggr::getLevelName(logLevel) << std::endl;
 	}
 
 };
 
 
-int main ()
+
+int main()
 {
+
 	int i = 55;
 
-	lggr::Config::setStackLevel (lggr::info);
-	lggr::Config::setConsoleLevel (lggr::trace);
+	lggr::Config::setStackLevel(lggr::LL::INFO);
+	lggr::Config::setConsoleLevel(lggr::LL::TRACE);
 
 	lggr::trace << "trace";
 	lggr::debug << "debug";
@@ -44,7 +46,7 @@ int main ()
 
 	//Show events.... again
 	Receiver receiver;
-	retrieveLogEvents (receiver, lggr::debug);
+	retrieveLogEvents(receiver, lggr::LL::ERROR);
 
 	return 0;
 }

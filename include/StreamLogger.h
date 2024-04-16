@@ -31,6 +31,10 @@ namespace StreamLogger
 		FATAL = 0x05    // For critical issues, may require the program to terminate.
 	};
 
+	//Alias for the enum
+	using LL = LogLevel;
+
+
 	enum class LogColor : unsigned char
 	{
 		BLACK,		//Not to use, it wold display invisible text
@@ -74,20 +78,16 @@ namespace StreamLogger
 	{
 	public:
 		//If 0, there will be no stack at all
-		static void setStackSize (int stackSize);
+		static void setStackSize(int stackSize);
 
-		static void setOutFile (const std::string fileName); //It'll rotate by day if the template has a %d
-		static void setOutPath (const std::string filePath);
-		static void setLevelColor (LogLevel logLevel, LogColor logColor);
+		static void setOutFile(const std::string fileName); //It'll rotate by day if the template has a %d
+		static void setOutPath(const std::string filePath);
+		static void setLevelColor(LogLevel logLevel, LogColor logColor);
 
-		static void setConsoleLevel (LogLevel logLevel);
-		static void setFileLevel (LogLevel logLevel);
-		static void setStackLevel (LogLevel logLevel);
+		static void setConsoleLevel(LogLevel logLevel);
+		static void setFileLevel(LogLevel logLevel);
+		static void setStackLevel(LogLevel logLevel);
 
-		//The same as above, but allowing this: setConsoleLevel (StreamLogger::info);
-		static void setConsoleLevel (BaseStreamLogger logLevel);
-		static void setFileLevel (BaseStreamLogger logLevel);
-		static void setStackLevel (BaseStreamLogger logLevel);
 	};
 
 
@@ -97,10 +97,10 @@ namespace StreamLogger
 	class LogMessageBuilder
 	{
 	public:
-		LGGR_API LogMessageBuilder (BaseStreamLogger& logger);
-		LGGR_API LogMessageBuilder (const LogMessageBuilder& other) = delete;
-		LGGR_API LogMessageBuilder (LogMessageBuilder&& other) noexcept;
-		LGGR_API ~LogMessageBuilder ();
+		LGGR_API LogMessageBuilder(BaseStreamLogger& logger);
+		LGGR_API LogMessageBuilder(const LogMessageBuilder& other) = delete;
+		LGGR_API LogMessageBuilder(LogMessageBuilder&& other) noexcept;
+		LGGR_API ~LogMessageBuilder();
 
 		LGGR_API LogMessageBuilder& operator<<(const std::string& value);
 		LGGR_API LogMessageBuilder& operator<<(int value);
@@ -116,7 +116,7 @@ namespace StreamLogger
 	class LGGR_API BaseStreamLogger
 	{
 	public:
-		BaseStreamLogger (LogLevel level);
+		BaseStreamLogger(LogLevel level);
 
 		const LogLevel level;
 
@@ -124,7 +124,7 @@ namespace StreamLogger
 		LogMessageBuilder operator<<(int value);
 		LogMessageBuilder operator<<(double value);
 
-		void log (std::string& message);
+		void log(std::string& message);
 	};
 
 	extern LGGR_API BaseStreamLogger trace;
@@ -141,14 +141,13 @@ namespace StreamLogger
 	class LogEventsReceiver
 	{
 	public:
-		virtual void receive (const std::string& date, const std::string logTxt, LogLevel logLevel) = 0;
+		virtual void receive(const std::string& date, const std::string logTxt, const LogLevel logLevel) = 0;
 	};
 
-	LGGR_API void retrieveLogEvents (LogEventsReceiver& receiver, BaseStreamLogger& logLevel);
-	LGGR_API void retrieveLogEvents (LogEventsReceiver& receiver, LogLevel logLevel);
+	LGGR_API void retrieveLogEvents(LogEventsReceiver& receiver, const LogLevel logLevel);
 
 	//--- Utility Functions ---
-	const LGGR_API std::string& getLevelName (LogLevel logLevel);
+	const LGGR_API std::string& getLevelName(const LogLevel logLevel);
 
 
 } //namespace StreamLogger

@@ -23,13 +23,13 @@ namespace StreamLogger
 
 
 	//--------------  Static values ----------------
-	const std::string logLevelNames [6] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
-	BaseStreamLogger trace (LogLevel::TRACE);
-	BaseStreamLogger debug (LogLevel::DEBUG);
-	BaseStreamLogger info (LogLevel::INFO);
-	BaseStreamLogger warn (LogLevel::WARN);
-	BaseStreamLogger error (LogLevel::ERROR);
-	BaseStreamLogger fatal (LogLevel::FATAL);
+	const std::string logLevelNames[6] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+	BaseStreamLogger trace(LogLevel::TRACE);
+	BaseStreamLogger debug(LogLevel::DEBUG);
+	BaseStreamLogger info(LogLevel::INFO);
+	BaseStreamLogger warn(LogLevel::WARN);
+	BaseStreamLogger error(LogLevel::ERROR);
+	BaseStreamLogger fatal(LogLevel::FATAL);
 
 
 	//--------------  Configuration Vars ----------------
@@ -40,7 +40,7 @@ namespace StreamLogger
 	int stackSize = DEFAULTS::STACK_SIZE;
 
 
-	LogColor levelColors [6] = {DEFAULTS::COLOR_TRACE, DEFAULTS::COLOR_DEBUG, DEFAULTS::COLOR_INFO, DEFAULTS::COLOR_WARN, DEFAULTS::COLOR_ERROR, DEFAULTS::COLOR_FATAL};
+	LogColor levelColors[6] = {DEFAULTS::COLOR_TRACE, DEFAULTS::COLOR_DEBUG, DEFAULTS::COLOR_INFO, DEFAULTS::COLOR_WARN, DEFAULTS::COLOR_ERROR, DEFAULTS::COLOR_FATAL};
 
 	LogLevel consoleLevel = DEFAULTS::CONSOLE_LEVEL;
 	LogLevel fileLevel = DEFAULTS::FILE_LEVEL;
@@ -48,42 +48,30 @@ namespace StreamLogger
 
 
 	//--------------  Configuration functions ----------------
-	void Config::setLevelColor (LogLevel logLevel, LogColor logColor)
+	void Config::setLevelColor(LogLevel logLevel, LogColor logColor)
 	{
-		levelColors [static_cast<int>(logLevel)] = logColor;
+		levelColors[static_cast<int>(logLevel)] = logColor;
 	}
 
 
-	void Config::setConsoleLevel (BaseStreamLogger logLevel)
-	{
-		setConsoleLevel (logLevel.level);
-	}
-	void Config::setFileLevel (BaseStreamLogger logLevel)
-	{
-		setFileLevel (logLevel.level);
-	}
-	void Config::setStackLevel (BaseStreamLogger logLevel)
-	{
-		setStackLevel (logLevel.level);
-	}
 
-	void Config::setConsoleLevel (LogLevel logLevel)
+	void Config::setConsoleLevel(LogLevel logLevel)
 	{
 		consoleLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
 	}
-	void Config::setFileLevel (LogLevel logLevel)
+	void Config::setFileLevel(LogLevel logLevel)
 	{
 		fileLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
 	}
-	void Config::setStackLevel (LogLevel logLevel)
+	void Config::setStackLevel(LogLevel logLevel)
 	{
 		stackLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
 	}
 
 	//--------------   Utility Functions ----------------
-	const std::string& getLevelName (LogLevel logLevel)
+	const std::string& getLevelName(LogLevel logLevel)
 	{
-		return logLevelNames [static_cast<int>(logLevel)];
+		return logLevelNames[static_cast<int>(logLevel)];
 	}
 
 
@@ -117,41 +105,41 @@ namespace StreamLogger
 
 
 		//Prevent illegal usage
-		StackLogger (const StackLogger&) = delete; // no copies
+		StackLogger(const StackLogger&) = delete; // no copies
 		StackLogger& operator=(const StackLogger&) = delete; // no self-assignments
-		StackLogger (StackLogger&&) = delete; // no move constructor
+		StackLogger(StackLogger&&) = delete; // no move constructor
 		StackLogger& operator=(StackLogger&&) = delete; // no move assignments
 
 
 	public:
-		StackLogger ();
+		StackLogger();
 		//~StackLogger ();
 
 		void log(LogLevel logLevel, std::string& event);
-		
-
-		void sendEvents (LogEventsReceiver& receiver, LogLevel logLevel);
 
 
-		void delLogsOltherThan (int maxLogFileDays);
+		void sendEvents(LogEventsReceiver& receiver, LogLevel logLevel);
+
+
+		void delLogsOltherThan(int maxLogFileDays);
 	};
 
 
 	StackLogger stackLogger;
 
 
-	StackLogger::StackLogger () : maxStoredEvents (stackSize)
+	StackLogger::StackLogger() : maxStoredEvents(stackSize)
 	{
 	}
 
 
-	void StackLogger::sendEvents (LogEventsReceiver& receiver, LogLevel logLevel)
+	void StackLogger::sendEvents(LogEventsReceiver& receiver, LogLevel logLevel)
 	{
 		for (auto& event : events)
 		{
 			if (event.logLevel >= logLevel)
 			{
-				receiver.receive (event.date, event.event, event.logLevel);
+				receiver.receive(event.date, event.event, event.logLevel);
 			}
 		}
 	}
@@ -165,7 +153,7 @@ namespace StreamLogger
 		{
 			return;
 		}
-		
+
 
 		//Yagni: consider extract fill and send to a external function so we don create the temporary object	
 		/*
@@ -186,14 +174,14 @@ namespace StreamLogger
 
 		*/
 		EventContainer tmpEvent;
-		EventContainer &newEvent = (logLevel >= stackLevel)? events.emplace_back() : tmpEvent;
+		EventContainer& newEvent = (logLevel >= stackLevel) ? events.emplace_back() : tmpEvent;
 
 		//---- Fill the event ----
 		newEvent.event = std::move(event);
 		newEvent.logLevel = logLevel;
 
 		auto now = std::chrono::system_clock::now();
-//#if __cplusplus >= 202002L
+		//#if __cplusplus >= 202002L
 #if true
 		newEvent.date = format("{}", now);
 #else
@@ -201,7 +189,7 @@ namespace StreamLogger
 		struct tm buf;
 		gmtime_s(&buf, &in_time_t);
 		char str[100];
-		strftime((char*)str, sizeof(str), "%F %T UTC", &buf);
+		strftime((char*) str, sizeof(str), "%F %T UTC", &buf);
 
 		newEvent.date = str;
 #endif
@@ -218,7 +206,7 @@ namespace StreamLogger
 			resetConsoleColor();
 		}
 
-			//Send to file
+		//Send to file
 		if (logLevel >= fileLevel)
 		{
 			//TODO:
@@ -232,7 +220,7 @@ namespace StreamLogger
 				events.pop_front();
 			}
 		}
-		
+
 	}
 
 
@@ -240,55 +228,55 @@ namespace StreamLogger
 	/**
 	* Constructor
 	*/
-	LogMessageBuilder::LogMessageBuilder (BaseStreamLogger& logger) : logger (logger)
+	LogMessageBuilder::LogMessageBuilder(BaseStreamLogger& logger) : logger(logger)
 	{
 	}
 
 	/**
 	* Move constructor
 	*/
-	LogMessageBuilder::LogMessageBuilder (LogMessageBuilder&& other) noexcept
-		: logger (other.logger), message (std::move (other.message))
+	LogMessageBuilder::LogMessageBuilder(LogMessageBuilder&& other) noexcept
+		: logger(other.logger), message(std::move(other.message))
 	{
 	}
 
 	/**
 	* Destructor, log the message
 	*/
-	LogMessageBuilder::~LogMessageBuilder ()
+	LogMessageBuilder::~LogMessageBuilder()
 	{
 		// If using string stream
 		//logger.log (stream.str ());
 
 		//As long as message moves to child, we only send it if it is not empty
-		if (!message.empty()) logger.log (message);
+		if (!message.empty()) logger.log(message);
 	}
 
 	LogMessageBuilder& LogMessageBuilder::operator<<(const std::string& s)
 	{
-		this->message.append (s);
+		this->message.append(s);
 		return *this;
 	}
 	LogMessageBuilder& LogMessageBuilder::operator<<(int value)
 	{
-		this->message.append (std::to_string (value));
+		this->message.append(std::to_string(value));
 		return *this;
 	}
 	LogMessageBuilder& LogMessageBuilder::operator<<(double value)
 	{
-		this->message.append (std::to_string (value));
+		this->message.append(std::to_string(value));
 		return *this;
 	}
 
 	//-------------- BaseStreamLogger ----------------
-	BaseStreamLogger::BaseStreamLogger (LogLevel level) : level (level)
+	BaseStreamLogger::BaseStreamLogger(LogLevel level) : level(level)
 	{
 	}
 
-	
 
 
-	void BaseStreamLogger::log (std::string& message)
+
+	void BaseStreamLogger::log(std::string& message)
 	{
 		stackLogger.log(level, message);
 	}
@@ -296,31 +284,28 @@ namespace StreamLogger
 
 	LogMessageBuilder BaseStreamLogger::operator<<(const std::string& value)
 	{
-		LogMessageBuilder tmpBuilder (*this);
+		LogMessageBuilder tmpBuilder(*this);
 		tmpBuilder << value;
-		return std::move (tmpBuilder);
+		return std::move(tmpBuilder);
 	}
 	LogMessageBuilder BaseStreamLogger::operator<<(int value)
 	{
-		LogMessageBuilder tmpBuilder (*this);
+		LogMessageBuilder tmpBuilder(*this);
 		tmpBuilder << value;
-		return std::move (tmpBuilder);
+		return std::move(tmpBuilder);
 	}
 	LogMessageBuilder BaseStreamLogger::operator<<(double value)
 	{
-		LogMessageBuilder tmpBuilder (*this);
+		LogMessageBuilder tmpBuilder(*this);
 		tmpBuilder << value;
-		return std::move (tmpBuilder);
+		return std::move(tmpBuilder);
 	}
 
 	//-------------- Event retransmission ----------------
-	void retrieveLogEvents (LogEventsReceiver& receiver, BaseStreamLogger& logLevel)
+
+	void retrieveLogEvents(LogEventsReceiver& receiver, const LogLevel logLevel)
 	{
-		stackLogger.sendEvents (receiver, logLevel.level);
-	}
-	void retrieveLogEvents (LogEventsReceiver& receiver, LogLevel logLevel)
-	{
-		stackLogger.sendEvents (receiver, logLevel);
+		stackLogger.sendEvents(receiver, logLevel);
 	}
 
 
