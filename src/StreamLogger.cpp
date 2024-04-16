@@ -98,15 +98,17 @@ namespace StreamLogger
 			StackLogger (StackLogger &&)                 = delete;    // no move constructor
 			StackLogger &operator= (StackLogger &&)      = delete;    // no move assignments
 
+			void sendToConsole (EventContainer &event);
+			void sendToFile (EventContainer &event);
+			void fillEvent (EventContainer &event, LogLevel logLevel, std::string &eventTxt);
+
 		public:
 			StackLogger();
 			//~StackLogger ();
+			// void delLogsOltherThan (int maxLogFileDays);
 
 			void log (LogLevel logLevel, std::string &event);
-
 			void sendEvents (LogEventsReceiver &receiver, LogLevel logLevel);
-
-			void delLogsOltherThan (int maxLogFileDays);
 	};
 
 	StackLogger stackLogger;
@@ -134,36 +136,58 @@ namespace StreamLogger
 			return;
 		}
 
-		// Yagni: consider extract fill and send to a external function so we don
-		// create the temporary object
-		/*
 		if (logLevel >= stackLevel)
 		{
-		        EventContainer &newEvent = events.emplace_back();
-		        fillAndSendEvent(newEvent, logLevel, event);
-		        if (events.size() > maxStoredEvents)
-		        {
-		                events.pop_front();
-		        }
+			EventContainer &newEvent = events.emplace_back();
+			fillEvent (newEvent, logLevel, event);
+			this->sendToConsole (newEvent);
+			this->sendToFile (newEvent);
+
+			if (events.size() > maxStoredEvents)
+			{
+				// We have already inserted onne, so if we are over the limit, we need to remove the oldest
+				events.pop_front();
+			}
 		}
-		else if (logLevel >= consoleLevel || logLevel >= fileLevel)
+		else
 		{
-		        EventContainer newEvent;
-		        fillAndSendEvent(newEvent, logLevel, event);
+			EventContainer tmpEvent;
+			fillEvent (tmpEvent, logLevel, event);
+			this->sendToConsole (tmpEvent);
+			this->sendToFile (tmpEvent);
 		}
+	}
 
-		*/
-		EventContainer tmpEvent;
-		EventContainer &newEvent = (logLevel >= stackLevel) ? events.emplace_back() : tmpEvent;
+	void StackLogger::sendToConsole (EventContainer &event)
+	{
+		if (event.logLevel >= consoleLevel)
+		{
+			LogColor lc = levelColors [static_cast<int> (event.logLevel)];
 
-		//---- Fill the event ----
-		newEvent.event    = std::move (event);
-		newEvent.logLevel = logLevel;
+			setConsoleColor (lc);
+			std::cout << event.date << " [" << getLevelName (event.logLevel) << "]\t";
+			std::cout << event.event << std::endl;
+			resetConsoleColor();
+		}
+	}
+
+	void StackLogger::sendToFile (EventContainer &event)
+	{
+		if (event.logLevel >= fileLevel)
+		{
+			// TODO:
+		}
+	}
+
+	void StackLogger::fillEvent (EventContainer &event, LogLevel logLevel, std::string &eventTxt)
+	{
+		event.event    = std::move (eventTxt);
+		event.logLevel = logLevel;
 
 		auto now = std::chrono::system_clock::now();
 		// #if __cplusplus >= 202002L
 #if true
-		newEvent.date = format ("{}", now);
+		event.date = format ("{}", now);
 #else
 		auto in_time_t = std::chrono::system_clock::to_time_t (now);
 		struct tm buf;
@@ -171,36 +195,8 @@ namespace StreamLogger
 		char str [100];
 		strftime ((char *) str, sizeof (str), "%F %T UTC", &buf);
 
-		newEvent.date = str;
+		event.date = str;
 #endif
-		//---- Fill the event: End ----
-
-		// Send to console
-		if (logLevel >= consoleLevel)
-		{
-			LogColor lc = levelColors [static_cast<int> (logLevel)];
-
-			setConsoleColor (lc);
-			std::cout << newEvent.date << " [" << getLevelName (logLevel) << "]\t";
-			std::cout << event << std::endl;
-			resetConsoleColor();
-		}
-
-		// Send to file
-		if (logLevel >= fileLevel)
-		{
-			// TODO:
-		}
-
-		if (logLevel >= stackLevel)
-		{
-			// We have already inserted onne, so if we are over the limit, we need to
-			// remove the oldest
-			if (events.size() > maxStoredEvents)
-			{
-				events.pop_front();
-			}
-		}
 	}
 
 	//-------------- LogMessageBuilder ----------------
