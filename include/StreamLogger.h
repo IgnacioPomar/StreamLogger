@@ -5,6 +5,7 @@
  ********************************************************************************************/
 
 #include <string>
+#include <cstdint>
 
 // If the lggrExportCfg.h is present, we are using it as a DLL os a static library
 // If not, we are using the library as a embedded source
@@ -18,7 +19,7 @@
 namespace StreamLogger
 {
 	//--------------  Enums ----------------
-	enum class LogLevel : unsigned char
+	enum class LogLevel : std::uint8_t
 	{
 		DontLog = 0xff,    // Highest value, used to indicate no logging should be performed.
 		TRACE   = 0x00,    // For detailed information, useful during development.
@@ -32,7 +33,7 @@ namespace StreamLogger
 	// Alias for the enum
 	using LL = LogLevel;
 
-	enum class LogColor : unsigned char
+	enum class LogColor : std::uint8_t
 	{
 		BLACK,    // Not to use, it wold display invisible text
 		WHITE,
