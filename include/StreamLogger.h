@@ -29,7 +29,7 @@ namespace StreamLogger
 	{
 		public:
 			// If 0, there will be no stack at all
-			static void setStackSize (int stackSize);
+			static void setStackSize (unsigned int stackSize);
 
 			static void setOutFile (const std::string fileName);    // It'll rotate by day if the template has a %d
 			static void setOutPath (const std::string filePath);

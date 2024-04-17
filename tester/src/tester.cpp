@@ -22,10 +22,12 @@ class Receiver : public lggr::LogEventsReceiver
 
 int main ()
 {
-	int i = 55;
-
+	// Default values in StreamLogger::DEFAULTS, defined in StreamLoggerConsts.h
 	lggr::Config::setStackLevel (lggr::LogLevel::INFO);
 	lggr::Config::setConsoleLevel (lggr::LL::TRACE);
+	// lggr::Config::setFileLevel (lggr::LL::INFO);
+	// lggr::Config::setOutPath ("./logs"); //Default is the executable path
+	lggr::Config::setOutFile ("%d_MyLog.log");
 
 	lggr::trace << "trace";
 	lggr::debug << "debug";

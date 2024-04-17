@@ -23,13 +23,13 @@ namespace StreamLogger
 	//--------------  Enums ----------------
 	enum class LogLevel : std::uint8_t
 	{
-		DontLog = 0xff,    // Highest value, used to indicate no logging should be performed.
-		TRACE   = 0x00,    // For detailed information, useful during development.
-		DEBUG   = 0x01,    // For diagnostic information, helpful in debugging.
-		INFO    = 0x02,    // For general runtime information.
-		WARN    = 0x03,    // For warnings, potential issues that are not errors.
-		ERROR   = 0x04,    // For errors, issues that may affect operation but not critical.
-		FATAL   = 0x05     // For critical issues, may require the program to terminate.
+		OFF   = 0xff,    // Highest value, used to indicate no logging should be performed.
+		TRACE = 0x00,    // For detailed information, useful during development.
+		DEBUG = 0x01,    // For diagnostic information, helpful in debugging.
+		INFO  = 0x02,    // For general runtime information.
+		WARN  = 0x03,    // For warnings, potential issues that are not errors.
+		ERROR = 0x04,    // For errors, issues that may affect operation but not critical.
+		FATAL = 0x05     // For critical issues, may require the program to terminate.
 	};
 
 	// Alias for the enum

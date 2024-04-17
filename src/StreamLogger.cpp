@@ -26,15 +26,29 @@ namespace StreamLogger
 
 	void Config::setConsoleLevel (LogLevel logLevel)
 	{
-		consoleLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		getLogger().setConsoleLevel (logLevel);
 	}
 	void Config::setFileLevel (LogLevel logLevel)
 	{
-		fileLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		getLogger().setFileLevel (logLevel);
 	}
 	void Config::setStackLevel (LogLevel logLevel)
 	{
-		stackLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		getLogger().setStackLevel (logLevel);
+	}
+	void Config::setStackSize (unsigned int stackSize)
+	{
+		getLogger().setStackSize (stackSize);
+	}
+
+	void Config::setOutFile (const std::string fileName)
+	{
+		getLogger().setFilePattern (fileName);
+	}
+
+	void Config::setOutPath (const std::string filePath)
+	{
+		getLogger().setLogPath (filePath);
 	}
 
 	//-------------- BaseStreamLogger ----------------

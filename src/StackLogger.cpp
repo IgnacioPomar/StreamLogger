@@ -1,6 +1,9 @@
 
+#include <format>
 #include <chrono>
 #include <iostream>
+
+#include <filesystem>
 
 #include "StreamLoggerConsts.h"
 #include "StreamLoggerSettings.h"
@@ -12,9 +15,26 @@
 namespace StreamLogger
 {
 
+	namespace fs = std::filesystem;
+
 	StackLogger::StackLogger()
 	{
-		this->setStackSize (stackSize);
+		this->setStackSize (DEFAULTS::STACK_SIZE);
+		this->setStackLevel (DEFAULTS::STACK_LEVEL);
+		this->setConsoleLevel (DEFAULTS::CONSOLE_LEVEL);
+		this->setFileLevel (DEFAULTS::FILE_LEVEL);
+
+		this->setFilePattern (DEFAULTS::FILE_NAME);
+		this->setLogPath ("");
+	}
+
+	StackLogger::~StackLogger()
+	{
+		if (logfile.is_open())
+		{
+			this->logfile.flush();
+			this->logfile.close();
+		}
 	}
 
 	void StackLogger::sendEvents (LogEventsReceiver &receiver, LogLevel logLevel)
@@ -35,7 +55,7 @@ namespace StreamLogger
 			return;
 		}
 
-		if (logLevel >= stackLevel)
+		if (maxStoredEvents > 0 && logLevel >= stackLevel)
 		{
 			EventContainer &newEvent = events.emplace_back();
 			fillEvent (newEvent, logLevel, event);
@@ -64,8 +84,8 @@ namespace StreamLogger
 			LogColor lc = levelColors [static_cast<int> (event.logLevel)];
 
 			setConsoleColor (lc);
-			std::cout << event.date << " [" << getLevelName (event.logLevel) << "]\t";
-			std::cout << event.event << std::endl;
+			std::clog << event.date << " [" << getLevelName (event.logLevel) << "]\t";
+			std::clog << event.event << std::endl;
 			resetConsoleColor();
 		}
 	}
@@ -74,7 +94,56 @@ namespace StreamLogger
 	{
 		if (event.logLevel >= fileLevel)
 		{
-			// TODO:
+			// check rotation
+			if (hasRotation)
+			{
+				auto dp  = floor<std::chrono::days> (event.timePoint);
+				auto ymd = std::chrono::year_month_day {dp};
+
+				if (ymd != lastLogDate)
+				{
+					lastLogDate = ymd;
+					if (logfile.is_open())
+					{
+						this->logfile.close();
+					}
+
+					auto formattedDate = std::format ("{:04}-{:02}-{:02}", int (ymd.year()), unsigned (ymd.month()),
+					                                  unsigned (ymd.day()));
+					size_t pos         = logFilePattern.find ("%d");
+					if (pos != std::string::npos)
+					{
+						this->logFilename = logFilePattern.replace (pos, 2, formattedDate);
+					}
+					else
+					{
+						hasRotation       = false;
+						this->logFilename = logFilePattern;
+					}
+				}
+			}
+
+			if (!logfile.is_open())
+			{
+				fs::path filePath = fs::path (logPath) / this->logFilename;
+				this->logfile.open (filePath, std::ios::out | std::ios::app);
+				if (!this->logfile.is_open())
+				{
+					// Disable file logging
+					this->fileLevel = LogLevel::OFF;
+
+					// Generate event: unable to open log File
+					std::string msg ("Unable to open log file: ");
+					msg += filePath.string();
+					this->log (LL::ERROR, msg);
+				}
+			}
+
+			if (logfile.is_open())
+			{
+				this->logfile << event.date << " [" << getLevelName (event.logLevel) << "]\t";
+				this->logfile << event.event << '\n';
+			}
 		}
 	}
 
@@ -83,12 +152,12 @@ namespace StreamLogger
 		event.event    = std::move (eventTxt);
 		event.logLevel = logLevel;
 
-		auto now = std::chrono::system_clock::now();
+		event.timePoint = std::chrono::system_clock::now();
 		// #if __cplusplus >= 202002L
 #if true
-		event.date = format ("{}", now);
+		event.date = format ("{}", event.timePoint);
 #else
-		auto in_time_t = std::chrono::system_clock::to_time_t (now);
+		auto in_time_t = std::chrono::system_clock::to_time_t (event.timePoint);
 		struct tm buf;
 		gmtime_s (&buf, &in_time_t);
 		char str [100];
@@ -103,8 +172,45 @@ namespace StreamLogger
 		this->maxStoredEvents = size;
 		if (size == 0)
 		{
+			this->stackLevel = LogLevel::OFF;
 		}
+		// YAGNI: else {	this->stackLevel = storedStackLevel;		}
 
-		// TODO: resize current events
+		while (events.size() > maxStoredEvents)
+		{
+			events.pop_front();
+		}
 	}
+
+	void StackLogger::setConsoleLevel (LogLevel logLevel)
+	{
+		this->consoleLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+	}
+
+	void StackLogger::setFileLevel (LogLevel logLevel)
+	{
+		this->fileLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+	}
+
+	void StackLogger::setStackLevel (LogLevel logLevel)
+	{
+		if (this->maxStoredEvents != 0)
+		{
+			this->stackLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		}
+	}
+
+	void StackLogger::setFilePattern (const std::string &pattern)
+	{
+		// Force "reset" the file, and rotation config
+		this->hasRotation    = true;
+		this->logFilePattern = pattern;
+		this->lastLogDate    = std::chrono::year_month_day {};
+	}
+
+	void StackLogger::setLogPath (const std::string &path)
+	{
+		this->logPath = path;
+	}
+
 }    // namespace StreamLogger

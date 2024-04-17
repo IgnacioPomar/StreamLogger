@@ -12,11 +12,14 @@
 #	include <list>
 #	include <string>
 #	include <fstream>
+#	include <chrono>
 
 #	include "StreamLoggerConsts.h"
 
 namespace StreamLogger
 {
+	typedef std::chrono::system_clock::time_point TimePoint;
+
 	/**
 	 * Contain the info for a single event
 	 */
@@ -24,7 +27,9 @@ namespace StreamLogger
 	{
 		public:
 			// Storing the date as a string to avoid reformating each time we send it
-			//  Or, should we store it as chrono::time_point?
+			// And also as timePoint to detect rotation in filename
+
+			TimePoint timePoint;
 			std::string date;
 			std::string event;
 			LogLevel logLevel;
@@ -38,9 +43,18 @@ namespace StreamLogger
 		private:
 			std::list<EventContainer> events;
 
+			std::chrono::year_month_day lastLogDate;
+			std::string logPath;
+			std::string logFilename;
+			std::string logFilePattern;
+			bool hasRotation;
+
 			std::ofstream logfile;
 
 			unsigned int maxStoredEvents;
+			LogLevel consoleLevel;
+			LogLevel fileLevel;
+			LogLevel stackLevel;
 
 			// Prevent illegal usage
 			StackLogger (const StackLogger &)            = delete;    // no copies
@@ -52,11 +66,18 @@ namespace StreamLogger
 			void sendToFile (EventContainer &event);
 			void fillEvent (EventContainer &event, LogLevel logLevel, std::string &eventTxt);
 
+		protected:
+			friend class Config;
 			void setStackSize (unsigned int size);
+			void setConsoleLevel (LogLevel logLevel);
+			void setFileLevel (LogLevel logLevel);
+			void setStackLevel (LogLevel logLevel);
+			void setFilePattern (const std::string &pattern);
+			void setLogPath (const std::string &path);
 
 		public:
 			StackLogger();
-			//~StackLogger ();
+			~StackLogger();
 			// void delLogsOltherThan (int maxLogFileDays);
 
 			void log (LogLevel logLevel, std::string &event);
