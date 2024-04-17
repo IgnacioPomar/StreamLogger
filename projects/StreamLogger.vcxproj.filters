@@ -17,6 +17,18 @@
     <ClInclude Include="..\include\StreamLogger.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\StackLogger.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\StreamLoggerSettings.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\StreamLoggerConsts.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\LoggerConsoleUtils.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\lggrDllmain.cpp">
@@ -25,7 +37,19 @@
     <ClCompile Include="..\src\StreamLogger.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\ConsoleLog.cpp">
+    <ClCompile Include="..\src\LoggerConsoleUtils.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\StackLogger.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\StreamLoggerSettings.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\LogMessageBuilder.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\StreamLoggerConsts.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

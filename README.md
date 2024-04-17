@@ -24,8 +24,8 @@ public:
 };
 
 int main() {
-    log::Config::setStackLevel(lggr::LL::INFO);
-    log::Config::setConsoleLevel(lggr::LL::TRACE);
+    log::Config::setStackLevel  (log::LogLevel::INFO);
+    log::Config::setConsoleLevel(log::LL::TRACE); //Using a alias
 
     log::trace << "trace";
     log::debug << "debug";

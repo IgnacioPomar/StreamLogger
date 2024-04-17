@@ -162,11 +162,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\include\lggrExportCfg.h" />
+    <ClInclude Include="..\include\StreamLoggerConsts.h" />
     <ClInclude Include="..\include\StreamLogger.h" />
+    <ClInclude Include="..\src\LoggerConsoleUtils.h" />
+    <ClInclude Include="..\src\StreamLoggerSettings.h" />
+    <ClInclude Include="..\src\StackLogger.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\ConsoleLog.cpp" />
+    <ClCompile Include="..\src\LoggerConsoleUtils.cpp" />
     <ClCompile Include="..\src\lggrDllmain.cpp" />
+    <ClCompile Include="..\src\LogMessageBuilder.cpp" />
+    <ClCompile Include="..\src\StackLogger.cpp" />
+    <ClCompile Include="..\src\StreamLoggerConsts.cpp" />
+    <ClCompile Include="..\src\StreamLoggerSettings.cpp" />
     <ClCompile Include="..\src\StreamLogger.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

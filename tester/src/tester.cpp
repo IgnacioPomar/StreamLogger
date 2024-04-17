@@ -24,7 +24,7 @@ int main ()
 {
 	int i = 55;
 
-	lggr::Config::setStackLevel (lggr::LL::INFO);
+	lggr::Config::setStackLevel (lggr::LogLevel::INFO);
 	lggr::Config::setConsoleLevel (lggr::LL::TRACE);
 
 	lggr::trace << "trace";
