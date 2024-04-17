@@ -21,9 +21,14 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	//-------------- Event retransmission ----------------
 
-	void retrieveLogEvents (LogEventsReceiver &receiver, const LogLevel logLevel)
+	void pullLogEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel)
 	{
-		getLogger().sendEvents (receiver, logLevel);
+		getLogger().sendEvents (subscriber, logLevel);
+	}
+
+	LGGR_API void StreamLogger::subscribePushEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel)
+	{
+		getLogger().subscribePushEvents (subscriber, logLevel);
 	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger

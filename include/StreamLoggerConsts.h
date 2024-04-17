@@ -14,7 +14,6 @@
 #		define LGGR_API
 #	endif
 
-#	include <string>
 #	include <cstdint>
 
 namespace IgnacioPomar::Util::StreamLogger
@@ -33,9 +32,6 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	// Alias for the enum
 	using LL = LogLevel;
-
-	// Util functions
-	const LGGR_API std::string &getLevelName (const LogLevel logLevel);
 
 	enum class LogColor : std::uint8_t
 	{
@@ -71,17 +67,6 @@ namespace IgnacioPomar::Util::StreamLogger
 
 		inline constexpr int STACK_SIZE = 1000;
 	}    // namespace DEFAULTS
-
-	// YAGNI: conside move to another header file
-	//  We cant use std::string_view because in multi-threading, the subyacent string could be deleted
-	//--- Retrieve the generated events ---
-	class LogEventsReceiver
-	{
-		public:
-			virtual void receive (const std::string &date, const std::string logTxt, const LogLevel logLevel) = 0;
-	};
-
-	LGGR_API void retrieveLogEvents (LogEventsReceiver &receiver, const LogLevel logLevel);
 
 }    // namespace IgnacioPomar::Util::StreamLogger
 

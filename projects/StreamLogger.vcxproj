@@ -162,6 +162,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\include\lggrExportCfg.h" />
+    <ClInclude Include="..\include\StreamLoggerInterfaces.h" />
     <ClInclude Include="..\include\StreamLoggerConsts.h" />
     <ClInclude Include="..\include\StreamLogger.h" />
     <ClInclude Include="..\src\LoggerConsoleUtils.h" />

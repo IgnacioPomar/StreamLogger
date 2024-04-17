@@ -1,11 +1,15 @@
 # StreamLogger
-StreamLogger is a modern and fast logging library designed for C++ applications. It provides a familiar syntax similar to standard C++ logging mechanisms while offering advanced features like the ability to retrieve and display log events on different devices.
+
+StreamLogger is an advanced logging library tailored for service-oriented C++ applications. It is designed to not only offer a high-performance logging mechanism but also to facilitate the integration of log data across different services and applications.
+StreamLogger extends traditional logging functionalities to support event-driven architectures, allowing for logs to be pushed and accessed across various systems dynamically.
 
 ## Features
 
+- **Service-Oriented Architecture Support**: StreamLogger is optimized for use in microservices and distributed systems where logging data needs to be propagated across different services.
+- **Push Events Capability**: Enables applications to push log events to other services or applications, allowing for real-time monitoring and responsive event handling.
 - **Performance-Oriented**: Built to be fast and efficient, minimizing the overhead on your application.
 - **Modern C++ Standards**: Utilizes modern C++ paradigms for ease of integration and use.
-- **Cross-Device Logging**: Supports retrieving the latest log events for display on various devices, enhancing debugging and monitoring capabilities.
+- **Cross-Device and Cross-Service Logging**: Provides flexible log event retrieval and display across multiple devices and services, enhancing the capability for comprehensive system diagnostics and monitoring.
 
 ## TODO
 When needed, i'll implement the following features:

@@ -13,6 +13,7 @@
 #	include <fstream>
 #	include <chrono>
 
+#	include "StreamLoggerInterfaces.h"
 #	include "StreamLoggerConsts.h"
 
 namespace IgnacioPomar::Util::StreamLogger
@@ -34,6 +35,14 @@ namespace IgnacioPomar::Util::StreamLogger
 			LogLevel logLevel;
 	};
 
+	class EventSubscriber
+	{
+		public:
+			EventSubscriber (const LogEventsSubscriber &subscriber, const LogLevel logLevel);
+			const LogEventsSubscriber &subscriber;
+			const LogLevel logLevel;
+	};
+
 	/**
 	 * A logger wich stores the events in a stack
 	 */
@@ -41,6 +50,7 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		private:
 			std::list<EventContainer> events;
+			std::list<EventSubscriber> subscribers;
 
 			std::chrono::year_month_day lastLogDate;
 			std::string logPath;
@@ -63,6 +73,7 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			void sendToConsole (EventContainer &event);
 			void sendToFile (EventContainer &event);
+			void sendToSubscribers (EventContainer &event);
 			void fillEvent (EventContainer &event, LogLevel logLevel, std::string &eventTxt);
 
 		protected:
@@ -80,7 +91,8 @@ namespace IgnacioPomar::Util::StreamLogger
 			// void delLogsOltherThan (int maxLogFileDays);
 
 			void log (LogLevel logLevel, std::string &event);
-			void sendEvents (LogEventsReceiver &receiver, LogLevel logLevel);
+			void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
+			void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
 	};
 
 }    // namespace IgnacioPomar::Util::StreamLogger

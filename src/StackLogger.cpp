@@ -1,5 +1,5 @@
 /*********************************************************************************************
- * Description  : Modern C++ logger library, with evernt retrieval and color support
+ *  Description : Modern C++ logger library, with evernt retrieval and color support
  *  License     : The unlicense (https://unlicense.org)
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
@@ -42,15 +42,20 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
-	void StackLogger::sendEvents (LogEventsReceiver &receiver, LogLevel logLevel)
+	void StackLogger::sendEvents (LogEventsSubscriber &subscriber, LogLevel logLevel)
 	{
 		for (auto &event : events)
 		{
 			if (event.logLevel >= logLevel)
 			{
-				receiver.receive (event.date, event.event, event.logLevel);
+				subscriber.onLogEvent (event.date, event.event, event.logLevel);
 			}
 		}
+	}
+
+	void StackLogger::subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel)
+	{
+		subscribers.emplace_back (receiver, logLevel);
 	}
 
 	void StackLogger::log (LogLevel logLevel, std::string &event)
@@ -66,6 +71,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			fillEvent (newEvent, logLevel, event);
 			this->sendToConsole (newEvent);
 			this->sendToFile (newEvent);
+			this->sendToSubscribers (newEvent);
 
 			if (events.size() > maxStoredEvents)
 			{
@@ -79,6 +85,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			fillEvent (tmpEvent, logLevel, event);
 			this->sendToConsole (tmpEvent);
 			this->sendToFile (tmpEvent);
+			this->sendToSubscribers (tmpEvent);
 		}
 	}
 
@@ -152,6 +159,17 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
+	void StackLogger::sendToSubscribers (EventContainer &event)
+	{
+		for (auto &subscriber : subscribers)
+		{
+			if (event.logLevel >= subscriber.logLevel)
+			{
+				subscriber.subscriber.onLogEvent (event.date, event.event, event.logLevel);
+			}
+		}
+	}
+
 	void StackLogger::fillEvent (EventContainer &event, LogLevel logLevel, std::string &eventTxt)
 	{
 		event.event    = std::move (eventTxt);
@@ -216,6 +234,12 @@ namespace IgnacioPomar::Util::StreamLogger
 	void StackLogger::setLogPath (const std::string &path)
 	{
 		this->logPath = path;
+	}
+
+	EventSubscriber::EventSubscriber (const LogEventsSubscriber &subscriber, const LogLevel logLevel)
+	    : subscriber (subscriber)
+	    , logLevel (logLevel)
+	{
 	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger

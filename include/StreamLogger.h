@@ -18,6 +18,7 @@
 
 #	include <string>
 #	include "StreamLoggerConsts.h"
+#	include "StreamLoggerInterfaces.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
