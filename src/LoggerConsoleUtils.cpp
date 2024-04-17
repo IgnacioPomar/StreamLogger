@@ -1,4 +1,8 @@
-
+/*********************************************************************************************
+ *  Description : Modern C++ logger library, with evernt retrieval and color support
+ *  License     : The unlicense (https://unlicense.org)
+ *	Copyright	(C) 2024  Ignacio Pomar Ballestero
+ ********************************************************************************************/
 
 #include "StreamLogger.h"
 

@@ -1,7 +1,7 @@
 /*********************************************************************************************
- *	Name		: dllmain.cpp
- *	Description	: File only for windows. Only contains the dllmain
- *	Copyright	(C) 2024 Ignacio Pomar Ballestero
+ *  Description : Modern C++ logger library, with evernt retrieval and color support
+ *  License     : The unlicense (https://unlicense.org)
+ *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
 // If we have no header outside the #ifdef block, the intellisense will give the following error:
