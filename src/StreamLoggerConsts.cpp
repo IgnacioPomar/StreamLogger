@@ -5,7 +5,7 @@
 
 #include "StackLogger.h"
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 	const std::string logLevelNames [6] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
@@ -22,4 +22,4 @@ namespace StreamLogger
 		getLogger().sendEvents (receiver, logLevel);
 	}
 
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger

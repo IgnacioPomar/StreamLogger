@@ -16,7 +16,7 @@
 #include "StackLogger.h"
 #include "StreamLogger.h"
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 	//--------------  Configuration functions ----------------
 	void Config::setLevelColor (LogLevel logLevel, LogColor logColor)
@@ -81,4 +81,4 @@ namespace StreamLogger
 		return std::move (tmpBuilder);
 	}
 
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger

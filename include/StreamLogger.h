@@ -20,7 +20,7 @@
 #	include <string>
 #	include "StreamLoggerConsts.h"
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 
 	//--------------  Logger configuration ----------------
@@ -83,5 +83,5 @@ namespace StreamLogger
 	extern LGGR_API BaseStreamLogger error;
 	extern LGGR_API BaseStreamLogger fatal;
 
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger
 #endif    // _STREAM_LOGGER_H_

@@ -1,7 +1,7 @@
 
 #include <string>
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 
 	extern LogColor levelColors [6];
@@ -9,4 +9,4 @@ namespace StreamLogger
 	// Pointer to the current logger
 	class StackLogger;
 	StackLogger &getLogger ();
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger

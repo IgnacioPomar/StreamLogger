@@ -12,7 +12,7 @@
 
 #include "StackLogger.h"
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 
 	namespace fs = std::filesystem;
@@ -213,4 +213,4 @@ namespace StreamLogger
 		this->logPath = path;
 	}
 
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger

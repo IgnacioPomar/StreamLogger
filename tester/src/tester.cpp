@@ -9,7 +9,7 @@
 
 #pragma comment(lib, "StreamLogger" END_LIB_STD)
 
-namespace lggr = StreamLogger;
+namespace lggr = IgnacioPomar::Util::StreamLogger;
 
 class Receiver : public lggr::LogEventsReceiver
 {

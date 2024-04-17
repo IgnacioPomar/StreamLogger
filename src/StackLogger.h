@@ -16,7 +16,7 @@
 
 #	include "StreamLoggerConsts.h"
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 	typedef std::chrono::system_clock::time_point TimePoint;
 
@@ -84,5 +84,5 @@ namespace StreamLogger
 			void sendEvents (LogEventsReceiver &receiver, LogLevel logLevel);
 	};
 
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger
 #endif    // STACKLOGGER_H

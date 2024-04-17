@@ -35,7 +35,7 @@
 
 #endif
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 
 	HANDLE GetConsoleHandle ()
@@ -65,4 +65,4 @@ namespace StreamLogger
 	{
 		SetConsoleTextAttribute (GetConsoleHandle(), FOREGROUND_WHITE);
 	}
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger

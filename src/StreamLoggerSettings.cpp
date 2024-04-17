@@ -9,7 +9,7 @@
 #include "StackLogger.h"
 #include "StreamLogger.h"
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 	//--------------  Const values ----------------
 
@@ -45,4 +45,4 @@ namespace StreamLogger
 		*/
 	};
 
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger

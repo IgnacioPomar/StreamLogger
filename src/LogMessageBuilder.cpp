@@ -1,7 +1,7 @@
 #include "StackLogger.h"
 #include "StreamLogger.h"
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 	/**
 	 * Constructor
@@ -50,4 +50,4 @@ namespace StreamLogger
 		this->message.append (std::to_string (value));
 		return *this;
 	}
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger

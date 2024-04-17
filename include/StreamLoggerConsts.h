@@ -18,7 +18,7 @@
 #	include <string>
 #	include <cstdint>
 
-namespace StreamLogger
+namespace IgnacioPomar::Util::StreamLogger
 {
 	//--------------  Enums ----------------
 	enum class LogLevel : std::uint8_t
@@ -84,6 +84,6 @@ namespace StreamLogger
 
 	LGGR_API void retrieveLogEvents (LogEventsReceiver &receiver, const LogLevel logLevel);
 
-}    // namespace StreamLogger
+}    // namespace IgnacioPomar::Util::StreamLogger
 
 #endif    // _LOGGER_CONSTANTS_H
