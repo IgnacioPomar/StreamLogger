@@ -21,7 +21,7 @@ Here is a simple example demonstrating how to use StreamLogger in your applicati
 ```cpp
 #include "StreamLogger.h"
 
-namespace lggr = StreamLogger;
+namespace lggr = IgnacioPomar::Util::StreamLogger;
 
 class Receiver : public log::LogEventsReceiver {
 public:
