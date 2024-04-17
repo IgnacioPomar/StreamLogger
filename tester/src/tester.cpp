@@ -45,28 +45,29 @@ int main ()
 	// lggr::Config::setOutPath ("./logs"); //Default is the executable path
 	lggr::Config::setOutFile ("%d_MyLog.log");
 
-	lggr::trace << "Song: London Bridge is falling down";
-	lggr::debug << "Falling down, falling down";
-	lggr::debug << "London Bridge is falling down";
-	lggr::debug << "My fair lady";
-	lggr::info << "Build it up with iron bars";
-	lggr::info << "Iron bars, iron bars";
-	lggr::info << "Build it up with iron bars";
-	lggr::debug << "My fair lady";
-	lggr::warn << "Iron bars will bend and break";
-	lggr::warn << "Bend and break, bend and break";
-	lggr::warn << "Iron bars will bend and break";
-	lggr::debug << "My fair lady";
-	lggr::info << "Build it up with silver and gold";
-	lggr::info << "Silver and gold, silver and gold";
-	lggr::info << "Build it up with silver and gold";
-	lggr::debug << "My fair lady";
-	lggr::info << "Set a man to watch all night";
-	lggr::error << "Suppose the man should fall asleep";
-	lggr::fatal << "The man finally slept, the man finally slept";
-	lggr::fatal << "... the bridge is broken ...";
+	int line = 0;
 
-	lggr::info << "Number: " << 33 << "\tdouble: " << .5;
+	lggr::trace << line++ << "\tSong: London Bridge is falling down";
+	lggr::debug << line++ << "\tFalling down, falling down";
+	lggr::debug << line++ << "\tLondon Bridge is falling down";
+	lggr::debug << line++ << "\tMy fair lady";
+	lggr::info << line++ << "\tBuild it up with iron bars";
+	lggr::info << line++ << "\tIron bars, iron bars";
+	lggr::info << line++ << "\tBuild it up with iron bars";
+	lggr::debug << line++ << "\tMy fair lady";
+	lggr::warn << line++ << "\tIron bars will bend and break";
+	lggr::warn << line++ << "\tBend and break, bend and break";
+	lggr::warn << line++ << "\tIron bars will bend and break";
+	lggr::debug << line++ << "\tMy fair lady";
+	lggr::info << line++ << "\tBuild it up with silver and gold";
+	lggr::info << line++ << "\tSilver and gold, silver and gold";
+	lggr::info << line++ << "\tBuild it up with silver and gold";
+	lggr::debug << line++ << "\tMy fair lady";
+	lggr::info << line++ << "\tSet a man to watch all night";
+	lggr::error << line++ << "\tSuppose the man should fall asleep";
+	lggr::fatal << line++ << "\tThe man finally fell asleep, the man finally fell asleep";
+	lggr::error << line++ << "\tfell asleep,  fell asleep";
+	lggr::fatal << "There is no bridge left! the thieves stole it!!";
 
 	// Show events.... again
 	EventReprinter reprinter;
