@@ -17,38 +17,6 @@
 
 namespace IgnacioPomar::Util::StreamLogger
 {
-	//--------------  Configuration functions ----------------
-	void Config::setLevelColor (LogLevel logLevel, LogColor logColor)
-	{
-		levelColors [static_cast<int> (logLevel)] = logColor;
-	}
-
-	void Config::setConsoleLevel (LogLevel logLevel)
-	{
-		getLogger().setConsoleLevel (logLevel);
-	}
-	void Config::setFileLevel (LogLevel logLevel)
-	{
-		getLogger().setFileLevel (logLevel);
-	}
-	void Config::setStackLevel (LogLevel logLevel)
-	{
-		getLogger().setStackLevel (logLevel);
-	}
-	void Config::setStackSize (unsigned int stackSize)
-	{
-		getLogger().setStackSize (stackSize);
-	}
-
-	void Config::setOutFile (const std::string fileName)
-	{
-		getLogger().setFilePattern (fileName);
-	}
-
-	void Config::setOutPath (const std::string filePath)
-	{
-		getLogger().setLogPath (filePath);
-	}
 
 	//-------------- BaseStreamLogger ----------------
 	BaseStreamLogger::BaseStreamLogger (LogLevel level)

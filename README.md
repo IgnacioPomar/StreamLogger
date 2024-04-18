@@ -8,14 +8,15 @@ StreamLogger extends traditional logging functionalities to support event-driven
 - **Service-Oriented Architecture Support**: StreamLogger is optimized for use in microservices and distributed systems where logging data needs to be propagated across different services.
 - **Push Events Capability**: Enables applications to push log events to other services or applications, allowing for real-time monitoring and responsive event handling.
 - **Performance-Oriented**: Built to be fast and efficient, minimizing the overhead on your application.
+- **Memory Safety**: Utilizes modern C++ features, to ensure safety and robustness by avoiding the use of raw pointers.
 - **Modern C++ Standards**: Utilizes modern C++ paradigms for ease of integration and use.
 - **Cross-Device and Cross-Service Logging**: Provides flexible log event retrieval and display across multiple devices and services, enhancing the capability for comprehensive system diagnostics and monitoring.
 
 ## TODO
-When needed, i'll implement the following features:
-- Multi-threading flavor
+In the future, the following features will be implemented:
 - Category classification
-- File and line number
+- Timed Events
+- File and line number (and thread id if multithread)
 - Replace the string conversions with real streams (check wich dependencies are needed)
 
 ## Example of use
@@ -52,6 +53,8 @@ class PushEventHandler : public lggr::LogEventsSubscriber
 
 int main ()
 {
+	lggr::Config::setMultiThreadSafe (true);
+
 	PushEventHandler pushHandler;
 	lggr::subscribePushEvents (pushHandler, lggr::LL::FATAL);
 

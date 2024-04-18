@@ -55,5 +55,8 @@
     <ClCompile Include="..\src\StreamLoggerConsts.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\StreamLoggerConfig.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

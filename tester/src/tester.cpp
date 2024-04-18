@@ -35,6 +35,8 @@ class PushEventHandler : public lggr::LogEventsSubscriber
 
 int main ()
 {
+	lggr::Config::setMultiThreadSafe (true);
+
 	PushEventHandler pushHandler;
 	lggr::subscribePushEvents (pushHandler, lggr::LL::FATAL);
 

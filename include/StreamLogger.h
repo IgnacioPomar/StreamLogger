@@ -28,6 +28,9 @@ namespace IgnacioPomar::Util::StreamLogger
 	class LGGR_API Config
 	{
 		public:
+			// Set this before any threads are started and do not change it afterwards.
+			static void setMultiThreadSafe (bool multiThreadSafe);
+
 			// If 0, there will be no stack at all
 			static void setStackSize (unsigned int stackSize);
 

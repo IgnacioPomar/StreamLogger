@@ -24,24 +24,27 @@ namespace IgnacioPomar::Util::StreamLogger
 	LogColor levelColors [6] = {DEFAULTS::COLOR_TRACE, DEFAULTS::COLOR_DEBUG, DEFAULTS::COLOR_INFO,
 	                            DEFAULTS::COLOR_WARN,  DEFAULTS::COLOR_ERROR, DEFAULTS::COLOR_FATAL};
 
-	StackLogger &getLogger ()
+	bool gMultiThreadSafe    = false;
+	bool isLoggerInitialized = false;
+
+	StackLogger &initSTDLogger ()
 	{
 		static StackLogger logger;
+		isLoggerInitialized = true;
 		return logger;
-
-		/*
-		// TODO: Make this in the future
-		if (multiThreadSafe)
-		{
-		    static StackLoggerMTSafe logger;
-		    return logger;
-		}
-		else
-		{
-		    static StackLogger logger;
-		    return logger;
-		}
-		*/
 	};
+
+	StackLogger &initMTSafeLogger ()
+	{
+		static StackLoggerMTSafe loggerMTSafe;
+		isLoggerInitialized = true;
+		return loggerMTSafe;
+	};
+
+	StackLogger &getLogger ()
+	{
+		static StackLogger &logger = (gMultiThreadSafe) ? initMTSafeLogger() : initSTDLogger();
+		return logger;
+	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger

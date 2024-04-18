@@ -242,4 +242,31 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 	}
 
+	// ------------------- StackLoggerMTSafe -------------------
+	// This class is a wrapper for StackLogger, adding mutex protection
+
+	StackLoggerMTSafe::StackLoggerMTSafe()
+	    : StackLogger()
+	{
+	}
+
+	void StackLoggerMTSafe::log (LogLevel logLevel, std::string &event)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		StackLogger::log (logLevel, event);
+	}
+
+	void StackLoggerMTSafe::sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		StackLogger::sendEvents (receiver, logLevel);
+	}
+
+	void StackLoggerMTSafe::subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel)
+	{
+		// do we need to lock the mutex here? It'll happens at the begining of the program, so it should be safe
+		std::lock_guard<std::mutex> lock (this->mtx);
+		StackLogger::subscribePushEvents (receiver, logLevel);
+	}
+
 }    // namespace IgnacioPomar::Util::StreamLogger

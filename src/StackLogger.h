@@ -13,6 +13,8 @@
 #	include <fstream>
 #	include <chrono>
 
+#	include <mutex>
+
 #	include "StreamLoggerInterfaces.h"
 #	include "StreamLoggerConsts.h"
 
@@ -90,9 +92,33 @@ namespace IgnacioPomar::Util::StreamLogger
 			~StackLogger();
 			// void delLogsOltherThan (int maxLogFileDays);
 
-			void log (LogLevel logLevel, std::string &event);
-			void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
-			void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
+			virtual void log (LogLevel logLevel, std::string &event);
+			virtual void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
+			virtual void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
+	};
+
+	class StackLoggerMTSafe : public StackLogger
+	{
+		private:
+			std::mutex mtx;
+
+			// Prevent illegal usage: this class is a singleton
+			StackLoggerMTSafe (const StackLoggerMTSafe &)            = delete;    // no copies
+			StackLoggerMTSafe &operator= (const StackLoggerMTSafe &) = delete;    // no self-assignments
+			StackLoggerMTSafe (StackLoggerMTSafe &&)                 = delete;    // no move constructor
+			StackLoggerMTSafe &operator= (StackLoggerMTSafe &&)      = delete;    // no move assignments
+
+		public:
+			// Wee need the constructor to be public, as this class is a singleton
+			StackLoggerMTSafe();
+
+			// Dont need to override destructor: we dont need mutex as this calss is a singelton, and we will use the
+			// base class destructor
+			//~StackLoggerMTSafe();
+
+			void log (LogLevel logLevel, std::string &event) override;
+			void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
+			void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
 	};
 
 }    // namespace IgnacioPomar::Util::StreamLogger
