@@ -16,6 +16,7 @@
 #		define LGGR_API
 #	endif
 
+#	include <sstream>
 #	include <string>
 #	include "StreamLoggerConsts.h"
 #	include "StreamLoggerInterfaces.h"
@@ -34,7 +35,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			// If 0, there will be no stack at all
 			static void setStackSize (unsigned int stackSize);
 
-			static void setOutFile (const std::string fileName);    // It'll rotate by day if the template has a %d
+			static void setOutFile (const std::string fileName);    // It'll rotate each day if the template has a %d
 			static void setOutPath (const std::string filePath);
 			static void setLevelColor (LogLevel logLevel, LogColor logColor);
 
@@ -45,26 +46,7 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	//-------------- Classes to use externally ----------------
 
-	class BaseStreamLogger;    // Forward declaration for this functions
-	class LogMessageBuilder
-	{
-		public:
-			LGGR_API LogMessageBuilder (BaseStreamLogger &logger);
-			LGGR_API LogMessageBuilder (const LogMessageBuilder &other) = delete;
-			LGGR_API LogMessageBuilder (LogMessageBuilder &&other) noexcept;
-			LGGR_API ~LogMessageBuilder();
-
-			LGGR_API LogMessageBuilder &operator<< (const std::string &value);
-			LGGR_API LogMessageBuilder &operator<< (int value);
-			LGGR_API LogMessageBuilder &operator<< (double value);
-
-		private:
-			BaseStreamLogger &logger;
-
-			// YAGNI: consider use a stringStream, but, worth to add additioonal dependencies?
-			std::string message;
-	};
-
+	class LogMessageBuilder;
 	class LGGR_API BaseStreamLogger
 	{
 		public:
@@ -72,19 +54,59 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			const LogLevel level;
 
-			LogMessageBuilder operator<< (const std::string &value);
-			LogMessageBuilder operator<< (int value);
-			LogMessageBuilder operator<< (double value);
-
 			void log (std::string &message);
+
+			template <typename T> friend LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value);
 	};
 
+	//-------------- Instances of the loggers ----------------
 	extern LGGR_API BaseStreamLogger trace;
 	extern LGGR_API BaseStreamLogger debug;
 	extern LGGR_API BaseStreamLogger info;
 	extern LGGR_API BaseStreamLogger warn;
 	extern LGGR_API BaseStreamLogger error;
 	extern LGGR_API BaseStreamLogger fatal;
+
+	//-------------- template functions ----------------
+
+	template <typename T> LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value)
+	{
+		LogMessageBuilder tmpBuilder (logger);
+		tmpBuilder << value;
+		return std::move (tmpBuilder);
+	}
+
+	class LogMessageBuilder
+	{
+		public:
+			LogMessageBuilder (BaseStreamLogger &logger)
+			    : logger (logger) {};
+			LogMessageBuilder (const LogMessageBuilder &other) = delete;
+			LogMessageBuilder (LogMessageBuilder &&other) noexcept
+			    : logger (other.logger)
+			    , message (std::move (other.message)) {};
+			~LogMessageBuilder()
+			{
+				if (this->message.rdbuf()->in_avail() > 0)
+				{
+					std::string msg = message.str();
+					logger.log (msg);
+				}
+			};
+
+			// this funtion is a template: its outside the dll
+
+			template <typename T> LogMessageBuilder &operator<< (const T &msg)
+			{
+				this->message << msg;
+				return *this;
+			}
+
+		private:
+			BaseStreamLogger &logger;
+
+			std::stringstream message;
+	};
 
 }    // namespace IgnacioPomar::Util::StreamLogger
 #endif    // _STREAM_LOGGER_H_

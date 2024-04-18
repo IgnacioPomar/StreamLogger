@@ -108,7 +108,12 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		if (event.logLevel >= consoleLevel)
 		{
-			LogColor lc = levelColors [static_cast<int> (event.logLevel)];
+			int lvl = static_cast<int> (event.logLevel);
+			if (lvl > 5)
+			{
+				lvl = static_cast<int> (LogLevel::FATAL);
+			}
+			LogColor lc = levelColors [lvl];
 
 			setConsoleColor (lc);
 			std::clog << event.date << " [" << getLevelName (event.logLevel) << "]\t";

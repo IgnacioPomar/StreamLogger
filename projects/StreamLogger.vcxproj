@@ -172,7 +172,6 @@
   <ItemGroup>
     <ClCompile Include="..\src\LoggerConsoleUtils.cpp" />
     <ClCompile Include="..\src\lggrDllmain.cpp" />
-    <ClCompile Include="..\src\LogMessageBuilder.cpp" />
     <ClCompile Include="..\src\StackLogger.cpp" />
     <ClCompile Include="..\src\StreamLoggerConfig.cpp" />
     <ClCompile Include="..\src\StreamLoggerConsts.cpp" />

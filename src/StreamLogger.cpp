@@ -29,23 +29,4 @@ namespace IgnacioPomar::Util::StreamLogger
 		getLogger().log (level, message);
 	}
 
-	LogMessageBuilder BaseStreamLogger::operator<< (const std::string &value)
-	{
-		LogMessageBuilder tmpBuilder (*this);
-		tmpBuilder << value;
-		return std::move (tmpBuilder);
-	}
-	LogMessageBuilder BaseStreamLogger::operator<< (int value)
-	{
-		LogMessageBuilder tmpBuilder (*this);
-		tmpBuilder << value;
-		return std::move (tmpBuilder);
-	}
-	LogMessageBuilder BaseStreamLogger::operator<< (double value)
-	{
-		LogMessageBuilder tmpBuilder (*this);
-		tmpBuilder << value;
-		return std::move (tmpBuilder);
-	}
-
 }    // namespace IgnacioPomar::Util::StreamLogger
