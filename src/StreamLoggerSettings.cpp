@@ -21,9 +21,6 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	//--------------  Static values: Configuration Vars ----------------
 
-	LogColor levelColors [6] = {DEFAULTS::COLOR_TRACE, DEFAULTS::COLOR_DEBUG, DEFAULTS::COLOR_INFO,
-	                            DEFAULTS::COLOR_WARN,  DEFAULTS::COLOR_ERROR, DEFAULTS::COLOR_FATAL};
-
 	bool gMultiThreadSafe    = false;
 	bool isLoggerInitialized = false;
 

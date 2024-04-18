@@ -54,18 +54,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			std::list<EventContainer> events;
 			std::list<EventSubscriber> subscribers;
 
-			std::chrono::year_month_day lastLogDate;
-			std::string logPath;
-			std::string logFilename;
-			std::string logFilePattern;
-			bool hasRotation;
-
 			std::ofstream logfile;
-
-			unsigned int maxStoredEvents;
-			LogLevel consoleLevel;
-			LogLevel fileLevel;
-			LogLevel stackLevel;
 
 			// Prevent illegal usage
 			StackLogger (const StackLogger &)            = delete;    // no copies
@@ -79,13 +68,24 @@ namespace IgnacioPomar::Util::StreamLogger
 			void fillEvent (EventContainer &event, LogLevel logLevel, std::string &eventTxt);
 
 		protected:
+			void setDefaultValues ();
+			void cleanExcedentEvents ();
+
+			// YAGNI: Consider extract this vars to a StreamLoggerConfig class, and make StackLogger class to inherit
+			// from it
 			friend class Config;
-			void setStackSize (unsigned int size);
-			void setConsoleLevel (LogLevel logLevel);
-			void setFileLevel (LogLevel logLevel);
-			void setStackLevel (LogLevel logLevel);
-			void setFilePattern (const std::string &pattern);
-			void setLogPath (const std::string &path);
+
+			LogColor levelColors [6];
+			unsigned int maxStoredEvents;
+			LogLevel consoleLevel;
+			LogLevel fileLevel;
+			LogLevel stackLevel;
+
+			std::chrono::year_month_day lastLogDate;
+			std::string logPath;
+			std::string logFilename;
+			std::string logFilePattern;
+			bool hasRotation;
 
 		public:
 			StackLogger();

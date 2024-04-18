@@ -24,13 +24,28 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	StackLogger::StackLogger()
 	{
-		this->setStackSize (DEFAULTS::STACK_SIZE);
-		this->setStackLevel (DEFAULTS::STACK_LEVEL);
-		this->setConsoleLevel (DEFAULTS::CONSOLE_LEVEL);
-		this->setFileLevel (DEFAULTS::FILE_LEVEL);
+		this->setDefaultValues();
+	}
 
-		this->setFilePattern (DEFAULTS::FILE_NAME);
-		this->setLogPath ("");
+	void StreamLogger::StackLogger::setDefaultValues()
+	{
+		this->maxStoredEvents = DEFAULTS::STACK_SIZE;
+		this->stackLevel      = DEFAULTS::STACK_LEVEL;
+		this->consoleLevel    = DEFAULTS::CONSOLE_LEVEL;
+		this->fileLevel       = DEFAULTS::FILE_LEVEL;
+
+		this->hasRotation    = true;
+		this->logFilePattern = DEFAULTS::FILE_NAME;
+		this->lastLogDate    = std::chrono::year_month_day {};
+
+		this->logPath = "";
+
+		this->levelColors [0] = DEFAULTS::COLOR_TRACE;
+		this->levelColors [1] = DEFAULTS::COLOR_DEBUG;
+		this->levelColors [2] = DEFAULTS::COLOR_INFO;
+		this->levelColors [3] = DEFAULTS::COLOR_WARN;
+		this->levelColors [4] = DEFAULTS::COLOR_ERROR;
+		this->levelColors [5] = DEFAULTS::COLOR_FATAL;
 	}
 
 	StackLogger::~StackLogger()
@@ -190,50 +205,12 @@ namespace IgnacioPomar::Util::StreamLogger
 #endif
 	}
 
-	void StackLogger::setStackSize (unsigned int size)
+	void StackLogger::cleanExcedentEvents()
 	{
-		this->maxStoredEvents = size;
-		if (size == 0)
-		{
-			this->stackLevel = LogLevel::OFF;
-		}
-		// YAGNI: else {	this->stackLevel = storedStackLevel;		}
-
 		while (events.size() > maxStoredEvents)
 		{
 			events.pop_front();
 		}
-	}
-
-	void StackLogger::setConsoleLevel (LogLevel logLevel)
-	{
-		this->consoleLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
-	}
-
-	void StackLogger::setFileLevel (LogLevel logLevel)
-	{
-		this->fileLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
-	}
-
-	void StackLogger::setStackLevel (LogLevel logLevel)
-	{
-		if (this->maxStoredEvents != 0)
-		{
-			this->stackLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
-		}
-	}
-
-	void StackLogger::setFilePattern (const std::string &pattern)
-	{
-		// Force "reset" the file, and rotation config
-		this->hasRotation    = true;
-		this->logFilePattern = pattern;
-		this->lastLogDate    = std::chrono::year_month_day {};
-	}
-
-	void StackLogger::setLogPath (const std::string &path)
-	{
-		this->logPath = path;
 	}
 
 	EventSubscriber::EventSubscriber (const LogEventsSubscriber &subscriber, const LogLevel logLevel)

@@ -16,35 +16,53 @@ namespace IgnacioPomar::Util::StreamLogger
 	//--------------  Configuration functions ----------------
 	void Config::setLevelColor (LogLevel logLevel, LogColor logColor)
 	{
-		levelColors [static_cast<int> (logLevel)] = logColor;
+		getLogger().levelColors [static_cast<int> (logLevel)] = logColor;
 	}
 
 	void Config::setConsoleLevel (LogLevel logLevel)
 	{
-		getLogger().setConsoleLevel (logLevel);
+		getLogger().consoleLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
 	}
+
 	void Config::setFileLevel (LogLevel logLevel)
 	{
-		getLogger().setFileLevel (logLevel);
+		getLogger().fileLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
 	}
+
 	void Config::setStackLevel (LogLevel logLevel)
 	{
-		getLogger().setStackLevel (logLevel);
+		StackLogger &logger = getLogger();
+		if (logger.maxStoredEvents != 0)
+		{
+			logger.stackLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		}
 	}
 
 	void Config::setStackSize (unsigned int stackSize)
 	{
-		getLogger().setStackSize (stackSize);
+		StackLogger &logger    = getLogger();
+		logger.maxStoredEvents = stackSize;
+		if (stackSize == 0)
+		{
+			logger.stackLevel = LogLevel::OFF;
+		}
+		logger.cleanExcedentEvents();
 	}
 
 	void Config::setOutFile (const std::string fileName)
 	{
-		getLogger().setFilePattern (fileName);
+		StackLogger &logger = getLogger();
+
+		logger.logFilePattern = fileName;
+
+		// Force "reset" the file, and rotation config
+		logger.hasRotation = true;
+		logger.lastLogDate = std::chrono::year_month_day {};
 	}
 
 	void Config::setOutPath (const std::string filePath)
 	{
-		getLogger().setLogPath (filePath);
+		getLogger().logPath = filePath;
 	}
 
 	extern bool gMultiThreadSafe;
