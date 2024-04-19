@@ -122,8 +122,6 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	void StackLoggerConfig::setOutFile (const std::string fileName)
 	{
-		StackLogger &logger = getLogger();
-
 		this->logFilePattern = fileName;
 
 		// Force "reset" the file, and rotation config

@@ -34,7 +34,7 @@ namespace IgnacioPomar::Util::StreamLogger
 		getLogger().sendEvents (subscriber, logLevel);
 	}
 
-	LGGR_API void StreamLogger::subscribePushEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel)
+	void subscribePushEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel)
 	{
 		getLogger().subscribePushEvents (subscriber, logLevel);
 	}

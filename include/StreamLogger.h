@@ -100,13 +100,6 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	//-------------- template functions ----------------
 
-	template <typename T> LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value)
-	{
-		LogMessageBuilder tmpBuilder (logger);
-		tmpBuilder << value;
-		return std::move (tmpBuilder);
-	}
-
 	class LogMessageBuilder
 	{
 		public:
@@ -138,6 +131,13 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			std::stringstream message;
 	};
+
+	template <typename T> LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value)
+	{
+		LogMessageBuilder tmpBuilder (logger);
+		tmpBuilder << value;
+		return std::move (tmpBuilder);
+	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger
 #endif    // _STREAM_LOGGER_H_

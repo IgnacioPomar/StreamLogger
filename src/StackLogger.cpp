@@ -4,7 +4,9 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
-#include <format>
+#if __has_include(<format>)
+#	include <format>
+#endif
 #include <chrono>
 #include <iostream>
 
@@ -117,9 +119,16 @@ namespace IgnacioPomar::Util::StreamLogger
 						this->logfile.close();
 					}
 
+#if __has_include(<format>)
+
 					auto formattedDate = std::format ("{:04}-{:02}-{:02}", int (ymd.year()), unsigned (ymd.month()),
 					                                  unsigned (ymd.day()));
-					size_t pos         = logFilePattern.find ("%d");
+#else
+					std::string formattedDate = std::to_string (int (ymd.year())) + "-"
+					                            + std::to_string (unsigned (ymd.month())) + "-"
+					                            + std::to_string (unsigned (ymd.day()));
+#endif
+					size_t pos = logFilePattern.find ("%d");
 					if (pos != std::string::npos)
 					{
 						this->logFilename = logFilePattern.replace (pos, 2, formattedDate);
@@ -187,13 +196,13 @@ namespace IgnacioPomar::Util::StreamLogger
 		event.event = std::move (eventTxt);
 
 		event.timePoint = std::chrono::system_clock::now();
-		// #if __cplusplus >= 202002L
-#if true
+#if __has_include(<format>)
+
 		event.date = format ("{}", event.timePoint);
 #else
 		auto in_time_t = std::chrono::system_clock::to_time_t (event.timePoint);
 		struct tm buf;
-		gmtime_s (&buf, &in_time_t);
+		gmtime_r (&in_time_t, &buf);
 		char str [100];
 		strftime ((char *) str, sizeof (str), "%F %T UTC", &buf);
 

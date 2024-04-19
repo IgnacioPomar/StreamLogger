@@ -37,8 +37,6 @@
 #	define BACKGROUND_INTENSE_CYAN    (BACKGROUND_CYAN | BACKGROUND_INTENSITY)
 #	define BACKGROUND_INTENSE_MAGENTA (BACKGROUND_MAGENTA | BACKGROUND_INTENSITY)
 
-#endif
-
 namespace IgnacioPomar::Util::StreamLogger
 {
 
@@ -69,4 +67,43 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		SetConsoleTextAttribute (GetConsoleHandle(), FOREGROUND_WHITE);
 	}
+
 }    // namespace IgnacioPomar::Util::StreamLogger
+
+#else    //_WIN32
+#	include <iostream>
+
+namespace IgnacioPomar::Util::StreamLogger
+{
+
+	void setConsoleColor (LogColor color)
+	{
+		switch (color)
+		{
+		case LogColor::BLACK: std::cout << "\033[30m"; break;
+		case LogColor::WHITE: std::cout << "\033[37m"; break;
+		case LogColor::GREY: std::cout << "\033[90m"; break;
+		case LogColor::RED: std::cout << "\033[31m"; break;
+		case LogColor::LIGHTRED: std::cout << "\033[91m"; break;
+		case LogColor::GREEN: std::cout << "\033[32m"; break;
+		case LogColor::YELLOW: std::cout << "\033[33m"; break;
+		case LogColor::BLUE: std::cout << "\033[34m"; break;
+		case LogColor::MAGENTA: std::cout << "\033[35m"; break;
+		case LogColor::CYAN: std::cout << "\033[36m"; break;
+		/*
+		case LogColor::LIGHTGREEN: std::cout << "\033[92m"; break;
+		case LogColor::LIGHTYELLOW: std::cout << "\033[93m"; break;
+		case LogColor::LIGHTBLUE: std::cout << "\033[94m"; break;
+		case LogColor::LIGHTMAGENTA: std::cout << "\033[95m"; break;
+		case LogColor::LIGHTCYAN: std::cout << "\033[96m"; break;
+		*/
+		default: break;
+		}
+	}
+
+	void resetConsoleColor ()
+	{
+		std::cout << "\033[0m";
+	}
+}    // namespace IgnacioPomar::Util::StreamLogger
+#endif    //_WIN32
