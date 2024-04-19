@@ -20,9 +20,6 @@
     <ClInclude Include="..\src\StackLogger.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\StreamLoggerSettings.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\StreamLoggerConsts.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -49,7 +46,7 @@
     <ClCompile Include="..\src\StackLogger.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\StreamLoggerSettings.cpp">
+    <ClCompile Include="..\src\StackLoggerSingleton.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\StreamLoggerConsts.cpp">

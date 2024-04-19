@@ -15,8 +15,8 @@ StreamLogger extends traditional logging functionalities to support event-driven
 
 ## Wishlist
 These are things that seem to me like a good idea. Not all of these are likely to be implemented without outside help, and some of them will positively never be implemented.
+- Support Linux colors
 - Category classification
-- Replace the string conversions with real streams (check wich dependencies are needed)
 - Keep thread id if multithread
 
 Probably impossible:

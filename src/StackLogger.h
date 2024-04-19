@@ -119,5 +119,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			EventContainer &emplaceEvent (LogLevel logLevel) override;
 	};
 
+	StackLogger &getLogger ();
+
 }    // namespace IgnacioPomar::Util::StreamLogger
 #endif    // STACKLOGGER_H

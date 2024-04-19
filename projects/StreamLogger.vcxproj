@@ -167,7 +167,6 @@
     <ClInclude Include="..\include\StreamLogger.h" />
     <ClInclude Include="..\src\EventContainer.h" />
     <ClInclude Include="..\src\LoggerConsoleUtils.h" />
-    <ClInclude Include="..\src\StreamLoggerSettings.h" />
     <ClInclude Include="..\src\StackLogger.h" />
   </ItemGroup>
   <ItemGroup>
@@ -176,7 +175,7 @@
     <ClCompile Include="..\src\StackLogger.cpp" />
     <ClCompile Include="..\src\StreamLoggerConfig.cpp" />
     <ClCompile Include="..\src\StreamLoggerConsts.cpp" />
-    <ClCompile Include="..\src\StreamLoggerSettings.cpp" />
+    <ClCompile Include="..\src\StackLoggerSingleton.cpp" />
     <ClCompile Include="..\src\StreamLogger.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -11,7 +11,6 @@
 #include <filesystem>
 
 #include "StreamLoggerConsts.h"
-#include "StreamLoggerSettings.h"
 
 #include "LoggerConsoleUtils.h"
 

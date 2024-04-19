@@ -10,14 +10,6 @@
 
 namespace IgnacioPomar::Util::StreamLogger
 {
-	//--------------  Const values ----------------
-
-	StaticLogger trace (LogLevel::TRACE);
-	StaticLogger debug (LogLevel::DEBUG);
-	StaticLogger info (LogLevel::INFO);
-	StaticLogger warn (LogLevel::WARN);
-	StaticLogger error (LogLevel::ERROR);
-	StaticLogger fatal (LogLevel::FATAL);
 
 	//--------------  Static values: Configuration Vars ----------------
 

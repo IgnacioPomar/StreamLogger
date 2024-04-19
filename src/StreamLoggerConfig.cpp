@@ -7,7 +7,6 @@
 #include <string>
 
 #include "StreamLoggerConsts.h"
-#include "StreamLoggerSettings.h"
 #include "StackLogger.h"
 #include "StreamLogger.h"
 

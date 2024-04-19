@@ -5,13 +5,21 @@
  ********************************************************************************************/
 
 #include "StreamLoggerConsts.h"
-#include "StreamLoggerSettings.h"
-
+#include "StreamLogger.h"
 #include "StackLogger.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
 	const std::string logLevelNames [6] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+
+	//--------------  Static Logger instances ----------------
+
+	StaticLogger trace (LogLevel::TRACE);
+	StaticLogger debug (LogLevel::DEBUG);
+	StaticLogger info (LogLevel::INFO);
+	StaticLogger warn (LogLevel::WARN);
+	StaticLogger error (LogLevel::ERROR);
+	StaticLogger fatal (LogLevel::FATAL);
 
 	//--------------   Utility Functions ----------------
 	const std::string &getLevelName (LogLevel logLevel)
