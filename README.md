@@ -11,11 +11,11 @@ StreamLogger extends traditional logging functionalities to support event-driven
 - **Memory Safety**: Utilizes modern C++ features, to ensure safety and robustness by avoiding the use of raw pointers.
 - **Modern C++ Standards**: Utilizes modern C++ paradigms for ease of integration and use.
 - **Cross-Device and Cross-Service Logging**: Provides flexible log event retrieval and display across multiple devices and services, enhancing the capability for comprehensive system diagnostics and monitoring.
+- **Timed Events**: You can use timmed events.
 
 ## Wishlist
 These are things that seem to me like a good idea. Not all of these are likely to be implemented without outside help, and some of them will positively never be implemented.
 - Category classification
-- Timed Events
 - Replace the string conversions with real streams (check wich dependencies are needed)
 - Keep thread id if multithread
 
