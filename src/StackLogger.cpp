@@ -21,31 +21,7 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	namespace fs = std::filesystem;
 
-	StackLogger::StackLogger()
-	{
-		this->setDefaultValues();
-	}
-
-	void StreamLogger::StackLogger::setDefaultValues()
-	{
-		this->maxStoredEvents = DEFAULTS::STACK_SIZE;
-		this->stackLevel      = DEFAULTS::STACK_LEVEL;
-		this->consoleLevel    = DEFAULTS::CONSOLE_LEVEL;
-		this->fileLevel       = DEFAULTS::FILE_LEVEL;
-
-		this->hasRotation    = true;
-		this->logFilePattern = DEFAULTS::FILE_NAME;
-		this->lastLogDate    = std::chrono::year_month_day {};
-
-		this->logPath = "";
-
-		this->levelColors [0] = DEFAULTS::COLOR_TRACE;
-		this->levelColors [1] = DEFAULTS::COLOR_DEBUG;
-		this->levelColors [2] = DEFAULTS::COLOR_INFO;
-		this->levelColors [3] = DEFAULTS::COLOR_WARN;
-		this->levelColors [4] = DEFAULTS::COLOR_ERROR;
-		this->levelColors [5] = DEFAULTS::COLOR_FATAL;
-	}
+	StackLogger::StackLogger() {}
 
 	StackLogger::~StackLogger()
 	{

@@ -168,12 +168,13 @@
     <ClInclude Include="..\src\EventContainer.h" />
     <ClInclude Include="..\src\LoggerConsoleUtils.h" />
     <ClInclude Include="..\src\StackLogger.h" />
+    <ClInclude Include="..\src\StackLoggerConfig.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\LoggerConsoleUtils.cpp" />
     <ClCompile Include="..\src\lggrDllmain.cpp" />
     <ClCompile Include="..\src\StackLogger.cpp" />
-    <ClCompile Include="..\src\StreamLoggerConfig.cpp" />
+    <ClCompile Include="..\src\StackLoggerConfig.cpp" />
     <ClCompile Include="..\src\StreamLoggerConsts.cpp" />
     <ClCompile Include="..\src\StackLoggerSingleton.cpp" />
     <ClCompile Include="..\src\StreamLogger.cpp" />

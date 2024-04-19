@@ -26,23 +26,22 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	//--------------  Logger configuration ----------------
 
-	class LGGR_API Config
+	namespace Config
 	{
-		public:
-			// Set this before any threads are started and do not change it afterwards.
-			static void setMultiThreadSafe (bool multiThreadSafe);
+		// Set this before any threads are started and do not change it afterwards.
+		LGGR_API void setMultiThreadSafe (bool multiThreadSafe);
 
-			// If 0, there will be no stack at all
-			static void setStackSize (unsigned int stackSize);
+		// If 0, there will be no stack at all
+		LGGR_API void setStackSize (unsigned int stackSize);
 
-			static void setOutFile (const std::string fileName);    // It'll rotate each day if the template has a %d
-			static void setOutPath (const std::string filePath);
-			static void setLevelColor (LogLevel logLevel, LogColor logColor);
+		LGGR_API void setOutFile (const std::string fileName);    // It'll rotate each day if the template has a %d
+		LGGR_API void setOutPath (const std::string filePath);
+		LGGR_API void setLevelColor (LogLevel logLevel, LogColor logColor);
 
-			static void setConsoleLevel (LogLevel logLevel);
-			static void setFileLevel (LogLevel logLevel);
-			static void setStackLevel (LogLevel logLevel);
-	};
+		LGGR_API void setConsoleLevel (LogLevel logLevel);
+		LGGR_API void setFileLevel (LogLevel logLevel);
+		LGGR_API void setStackLevel (LogLevel logLevel);
+	};    // namespace Config
 
 	//-------------- Classes to use externally ----------------
 

@@ -32,6 +32,9 @@
     <ClInclude Include="..\src\EventContainer.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\StackLoggerConfig.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\lggrDllmain.cpp">
@@ -52,7 +55,7 @@
     <ClCompile Include="..\src\StreamLoggerConsts.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\StreamLoggerConfig.cpp">
+    <ClCompile Include="..\src\StackLoggerConfig.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

@@ -18,6 +18,7 @@
 #	include "StreamLoggerInterfaces.h"
 #	include "StreamLoggerConsts.h"
 #	include "EventContainer.h"
+#	include "StackLoggerConfig.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
@@ -33,7 +34,7 @@ namespace IgnacioPomar::Util::StreamLogger
 	/**
 	 * A logger wich stores the events in a stack
 	 */
-	class StackLogger
+	class StackLogger : public StackLoggerConfig
 	{
 		private:
 			std::list<EventContainer> events;
@@ -52,29 +53,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			void sendToSubscribers (EventContainer &event, bool useTimed);
 
 		protected:
-			void setDefaultValues ();
 			void cleanExcedentEvents ();
-
-			// YAGNI: Consider extract this vars to a StreamLoggerConfig class
-			// (StackLogger class would inherit it)
-			friend class Config;
-
-			LogColor levelColors [6];
-			LogLevel consoleLevel;
-			LogLevel fileLevel;
-			LogLevel stackLevel;
-
-			// In the current implementation, the Timed Events are, while running, in the stack
-			// That means that it can have more than maxStoredEvents events
-			// And that the stack may contain lower level events than the stackLevel
-			// YAGNI: Consider extract the timed events to a aditional list
-			unsigned int maxStoredEvents;
-
-			std::chrono::year_month_day lastLogDate;
-			std::string logPath;
-			std::string logFilename;
-			std::string logFilePattern;
-			bool hasRotation;
 
 		public:
 			StackLogger();
