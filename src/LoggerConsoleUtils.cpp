@@ -80,22 +80,22 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		switch (color)
 		{
-		case LogColor::BLACK: std::cout << "\033[30m"; break;
-		case LogColor::WHITE: std::cout << "\033[37m"; break;
-		case LogColor::GREY: std::cout << "\033[90m"; break;
-		case LogColor::RED: std::cout << "\033[31m"; break;
-		case LogColor::LIGHTRED: std::cout << "\033[91m"; break;
-		case LogColor::GREEN: std::cout << "\033[32m"; break;
-		case LogColor::YELLOW: std::cout << "\033[33m"; break;
-		case LogColor::BLUE: std::cout << "\033[34m"; break;
-		case LogColor::MAGENTA: std::cout << "\033[35m"; break;
-		case LogColor::CYAN: std::cout << "\033[36m"; break;
+		case LogColor::BLACK: std::clog << "\033[30m"; break;
+		case LogColor::WHITE: std::clog << "\033[37m"; break;
+		case LogColor::GREY: std::clog << "\033[90m"; break;
+		case LogColor::RED: std::clog << "\033[31m"; break;
+		case LogColor::LIGHTRED: std::clog << "\033[91m"; break;
+		case LogColor::GREEN: std::clog << "\033[32m"; break;
+		case LogColor::YELLOW: std::clog << "\033[33m"; break;
+		case LogColor::BLUE: std::clog << "\033[34m"; break;
+		case LogColor::MAGENTA: std::clog << "\033[35m"; break;
+		case LogColor::CYAN: std::clog << "\033[36m"; break;
 		/*
-		case LogColor::LIGHTGREEN: std::cout << "\033[92m"; break;
-		case LogColor::LIGHTYELLOW: std::cout << "\033[93m"; break;
-		case LogColor::LIGHTBLUE: std::cout << "\033[94m"; break;
-		case LogColor::LIGHTMAGENTA: std::cout << "\033[95m"; break;
-		case LogColor::LIGHTCYAN: std::cout << "\033[96m"; break;
+		case LogColor::LIGHTGREEN: std::clog << "\033[92m"; break;
+		case LogColor::LIGHTYELLOW: std::clog << "\033[93m"; break;
+		case LogColor::LIGHTBLUE: std::clog << "\033[94m"; break;
+		case LogColor::LIGHTMAGENTA: std::clog << "\033[95m"; break;
+		case LogColor::LIGHTCYAN: std::clog << "\033[96m"; break;
 		*/
 		default: break;
 		}
