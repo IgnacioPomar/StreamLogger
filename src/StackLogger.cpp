@@ -120,13 +120,15 @@ namespace IgnacioPomar::Util::StreamLogger
 					}
 
 #if __has_include(<format>)
-
 					auto formattedDate = std::format ("{:04}-{:02}-{:02}", int (ymd.year()), unsigned (ymd.month()),
 					                                  unsigned (ymd.day()));
 #else
-					std::string formattedDate = std::to_string (int (ymd.year())) + "-"
-					                            + std::to_string (unsigned (ymd.month())) + "-"
-					                            + std::to_string (unsigned (ymd.day()));
+					std::ostringstream oss;
+					oss << std::setw (4) << std::setfill ('0') << int (ymd.year()) << "-";
+					oss << std::setw (2) << std::setfill ('0') << unsigned (ymd.month()) << "-";
+					oss << std::setw (2) << std::setfill ('0') << unsigned (ymd.day());
+
+					std::string formattedDate = oss.str();
 #endif
 					size_t pos = logFilePattern.find ("%d");
 					if (pos != std::string::npos)
