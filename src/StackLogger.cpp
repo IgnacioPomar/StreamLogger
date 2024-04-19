@@ -180,12 +180,12 @@ namespace IgnacioPomar::Util::StreamLogger
 			{
 				if (useTimed)
 				{
-					subscriber.subscriber.onLogEvent (event.date, event.event, event.logLevel);
+					subscriber.subscriber.onLogEvent (event.date, event.event + "\tDone in: " + event.usedTimeTxt,
+					                                  event.logLevel);
 				}
 				else
 				{
-					subscriber.subscriber.onLogEvent (event.date, event.event + "\tDone in: " + event.usedTimeTxt,
-					                                  event.logLevel);
+					subscriber.subscriber.onLogEvent (event.date, event.event, event.logLevel);
 				}
 			}
 		}
