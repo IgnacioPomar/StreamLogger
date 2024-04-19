@@ -46,26 +46,58 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	//-------------- Classes to use externally ----------------
 
+	// forward declarations
 	class LogMessageBuilder;
-	class LGGR_API BaseStreamLogger
+	class EventContainer;
+
+	/**
+	 * Interfaz to fill the logger message with stream
+	 */
+	class BaseStreamLogger
 	{
 		public:
-			BaseStreamLogger (LogLevel level);
+			virtual void log (std::string &message) = 0;
+			template <typename T> friend LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value);
+	};
+
+	/**
+	 * A Event wich has been already stored in the stack. Allos to count its time
+	 * Uppon destruction the event finishes
+	 */
+	class LGGR_API TimedEvent : public BaseStreamLogger
+	{
+		private:
+			EventContainer &event;
+			bool started = false;
+
+		public:
+			~TimedEvent();
+			TimedEvent (EventContainer &event);
+			void log (std::string &message);
+	};
+
+	/**
+	 * Main interface to log messages: it'll be multiple instances of this class
+	 */
+	class LGGR_API StaticLogger : public BaseStreamLogger
+	{
+		public:
+			StaticLogger (LogLevel level);
 
 			const LogLevel level;
 
 			void log (std::string &message);
 
-			template <typename T> friend LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value);
+			TimedEvent startTimedEvent ();
 	};
 
 	//-------------- Instances of the loggers ----------------
-	extern LGGR_API BaseStreamLogger trace;
-	extern LGGR_API BaseStreamLogger debug;
-	extern LGGR_API BaseStreamLogger info;
-	extern LGGR_API BaseStreamLogger warn;
-	extern LGGR_API BaseStreamLogger error;
-	extern LGGR_API BaseStreamLogger fatal;
+	extern LGGR_API StaticLogger trace;
+	extern LGGR_API StaticLogger debug;
+	extern LGGR_API StaticLogger info;
+	extern LGGR_API StaticLogger warn;
+	extern LGGR_API StaticLogger error;
+	extern LGGR_API StaticLogger fatal;
 
 	//-------------- template functions ----------------
 

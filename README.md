@@ -74,10 +74,15 @@ int main ()
 	lggr::debug << line++ << "\tFalling down, falling down";
 	lggr::debug << line++ << "\tLondon Bridge is falling down";
 	lggr::debug << line++ << "\tMy fair lady";
-	lggr::info << line++ << "\tBuild it up with iron bars";
-	lggr::info << line++ << "\tIron bars, iron bars";
-	lggr::info << line++ << "\tBuild it up with iron bars";
-	lggr::debug << line++ << "\tMy fair lady";
+
+	{
+		auto timedEvt = lggr::info.startTimedEvent();
+		timedEvt << line++ << "\tBuild it up with iron bars";
+		lggr::info << line++ << "\tIron bars, iron bars";
+		lggr::info << line++ << "\tBuild it up with iron bars";
+		lggr::debug << line++ << "\tMy fair lady";
+	}
+
 	lggr::warn << line++ << "\tIron bars will bend and break";
 	lggr::warn << line++ << "\tBend and break, bend and break";
 	lggr::warn << line++ << "\tIron bars will bend and break";

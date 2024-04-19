@@ -165,6 +165,7 @@
     <ClInclude Include="..\include\StreamLoggerInterfaces.h" />
     <ClInclude Include="..\include\StreamLoggerConsts.h" />
     <ClInclude Include="..\include\StreamLogger.h" />
+    <ClInclude Include="..\src\EventContainer.h" />
     <ClInclude Include="..\src\LoggerConsoleUtils.h" />
     <ClInclude Include="..\src\StreamLoggerSettings.h" />
     <ClInclude Include="..\src\StackLogger.h" />

@@ -82,29 +82,26 @@ namespace IgnacioPomar::Util::StreamLogger
 
 		if (maxStoredEvents > 0 && logLevel >= stackLevel)
 		{
-			EventContainer &newEvent = events.emplace_back();
-			fillEvent (newEvent, logLevel, event);
-			this->sendToConsole (newEvent);
-			this->sendToFile (newEvent);
-			this->sendToSubscribers (newEvent);
-
-			if (events.size() > maxStoredEvents)
-			{
-				// We have already inserted onne, so if we are over the limit, we need to remove the oldest
-				events.pop_front();
-			}
+			EventContainer &newEvent = this->events.emplace_back (logLevel);
+			fillEvent (newEvent, event);
+			this->processEvent (newEvent);
 		}
 		else
 		{
-			EventContainer tmpEvent;
-			fillEvent (tmpEvent, logLevel, event);
-			this->sendToConsole (tmpEvent);
-			this->sendToFile (tmpEvent);
-			this->sendToSubscribers (tmpEvent);
+			EventContainer tmpEvent (logLevel);
+			fillEvent (tmpEvent, event);
+			this->processEvent (tmpEvent);
 		}
+
+		this->cleanExcedentEvents();
 	}
 
-	void StackLogger::sendToConsole (EventContainer &event)
+	EventContainer &StackLogger::emplaceEvent (LogLevel logLevel)
+	{
+		return events.emplace_back (logLevel);
+	}
+
+	void StackLogger::sendToConsole (EventContainer &event, bool useTimed)
 	{
 		if (event.logLevel >= consoleLevel)
 		{
@@ -117,12 +114,17 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			setConsoleColor (lc);
 			std::clog << event.date << " [" << getLevelName (event.logLevel) << "]\t";
-			std::clog << event.event << std::endl;
+			std::clog << event.event;
+			if (useTimed)
+			{
+				std::clog << "\tDone in: " << event.usedTimeTxt;
+			}
+			std::clog << std::endl;
 			resetConsoleColor();
 		}
 	}
 
-	void StackLogger::sendToFile (EventContainer &event)
+	void StackLogger::sendToFile (EventContainer &event, bool useTimed)
 	{
 		if (event.logLevel >= fileLevel)
 		{
@@ -174,26 +176,40 @@ namespace IgnacioPomar::Util::StreamLogger
 			if (logfile.is_open())
 			{
 				this->logfile << event.date << " [" << getLevelName (event.logLevel) << "]\t";
-				this->logfile << event.event << '\n';
+				this->logfile << event.event;
+				if (useTimed)
+				{
+					this->logfile << "\tDone in: " << event.usedTimeTxt;
+				}
+				this->logfile << '\n';
 			}
 		}
 	}
 
-	void StackLogger::sendToSubscribers (EventContainer &event)
+	void StackLogger::sendToSubscribers (EventContainer &event, bool useTimed)
 	{
+		// YAGNI: consider a thread for each subscriber if we are in MultiThreadSafe flavor
+		// We would need a thread pool?
 		for (auto &subscriber : subscribers)
 		{
 			if (event.logLevel >= subscriber.logLevel)
 			{
-				subscriber.subscriber.onLogEvent (event.date, event.event, event.logLevel);
+				if (useTimed)
+				{
+					subscriber.subscriber.onLogEvent (event.date, event.event, event.logLevel);
+				}
+				else
+				{
+					subscriber.subscriber.onLogEvent (event.date, event.event + "\tDone in: " + event.usedTimeTxt,
+					                                  event.logLevel);
+				}
 			}
 		}
 	}
 
-	void StackLogger::fillEvent (EventContainer &event, LogLevel logLevel, std::string &eventTxt)
+	void StackLogger::fillEvent (EventContainer &event, std::string &eventTxt)
 	{
-		event.event    = std::move (eventTxt);
-		event.logLevel = logLevel;
+		event.event = std::move (eventTxt);
 
 		event.timePoint = std::chrono::system_clock::now();
 		// #if __cplusplus >= 202002L
@@ -210,11 +226,70 @@ namespace IgnacioPomar::Util::StreamLogger
 #endif
 	}
 
+	void StackLogger::fillElapsedTime (EventContainer &event)
+	{
+		event.endTimePoint = std::chrono::system_clock::now();
+		event.eventType    = EVENT_TYPE_TIMED_FINISHED;
+
+		// Compute the duration in milliseconds
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds> (event.endTimePoint - event.timePoint);
+
+		// Extract time components
+		auto hours = std::chrono::duration_cast<std::chrono::hours> (duration);
+		duration -= hours;
+		auto minutes = std::chrono::duration_cast<std::chrono::minutes> (duration);
+		duration -= minutes;
+		auto seconds = std::chrono::duration_cast<std::chrono::seconds> (duration);
+		duration -= seconds;
+		auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds> (duration);
+
+		// Format the output string
+		event.usedTimeTxt = "";
+		if (hours.count() > 0)
+		{
+			event.usedTimeTxt += std::to_string (hours.count()) + "h ";
+		}
+		if (minutes.count() > 0 || !event.usedTimeTxt.empty())
+		{
+			event.usedTimeTxt += std::to_string (minutes.count()) + "' ";
+		}
+		if (seconds.count() > 0 || !event.usedTimeTxt.empty())
+		{
+			event.usedTimeTxt += std::to_string (seconds.count()) + "\" ";
+		}
+		if (milliseconds.count() > 0)
+		{
+			event.usedTimeTxt += std::to_string (milliseconds.count()) + "ms";
+		}
+	}
+
+	void StackLogger::processEvent (EventContainer &event)
+	{
+		// Only with finished Event timed events
+		bool useTimed = EVENT_TYPE_TIMED_FINISHED == event.eventType;
+
+		this->sendToConsole (event, useTimed);
+		this->sendToFile (event, useTimed);
+		this->sendToSubscribers (event, useTimed);
+	}
+
 	void StackLogger::cleanExcedentEvents()
 	{
-		while (events.size() > maxStoredEvents)
+		// Delete excedents, skiping the running timed events
+		// See maxStoredEvents notes in the header
+		auto it = events.begin();
+		while (events.size() > maxStoredEvents && it != events.end())
 		{
-			events.pop_front();
+			if ((*it).eventType & EVENT_TYPE_RUNNING)
+			{
+				// Skip the event if it matches the EVENT_TYPE_RUNNING mask
+				++it;
+			}
+			else
+			{
+				// Erase the event from the deque if it doesn't match the mask
+				it = events.erase (it);    // This safely increments the iterator
+			}
 		}
 	}
 
@@ -249,6 +324,12 @@ namespace IgnacioPomar::Util::StreamLogger
 		// do we need to lock the mutex here? It'll happens at the begining of the program, so it should be safe
 		std::lock_guard<std::mutex> lock (this->mtx);
 		StackLogger::subscribePushEvents (receiver, logLevel);
+	}
+
+	EventContainer &StackLoggerMTSafe::emplaceEvent (LogLevel logLevel)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		return StackLogger::emplaceEvent (logLevel);
 	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger

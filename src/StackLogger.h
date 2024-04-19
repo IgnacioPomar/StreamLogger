@@ -17,25 +17,10 @@
 
 #	include "StreamLoggerInterfaces.h"
 #	include "StreamLoggerConsts.h"
+#	include "EventContainer.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
-	typedef std::chrono::system_clock::time_point TimePoint;
-
-	/**
-	 * Contain the info for a single event
-	 */
-	class EventContainer
-	{
-		public:
-			// Storing the date as a string to avoid reformating each time we send it
-			// And also as timePoint to detect rotation in filename
-
-			TimePoint timePoint;
-			std::string date;
-			std::string event;
-			LogLevel logLevel;
-	};
 
 	class EventSubscriber
 	{
@@ -62,24 +47,28 @@ namespace IgnacioPomar::Util::StreamLogger
 			StackLogger (StackLogger &&)                 = delete;    // no move constructor
 			StackLogger &operator= (StackLogger &&)      = delete;    // no move assignments
 
-			void sendToConsole (EventContainer &event);
-			void sendToFile (EventContainer &event);
-			void sendToSubscribers (EventContainer &event);
-			void fillEvent (EventContainer &event, LogLevel logLevel, std::string &eventTxt);
+			void sendToConsole (EventContainer &event, bool useTimed);
+			void sendToFile (EventContainer &event, bool useTimed);
+			void sendToSubscribers (EventContainer &event, bool useTimed);
 
 		protected:
 			void setDefaultValues ();
 			void cleanExcedentEvents ();
 
-			// YAGNI: Consider extract this vars to a StreamLoggerConfig class, and make StackLogger class to inherit
-			// from it
+			// YAGNI: Consider extract this vars to a StreamLoggerConfig class
+			// (StackLogger class would inherit it)
 			friend class Config;
 
 			LogColor levelColors [6];
-			unsigned int maxStoredEvents;
 			LogLevel consoleLevel;
 			LogLevel fileLevel;
 			LogLevel stackLevel;
+
+			// In the current implementation, the Timed Events are, while running, in the stack
+			// That means that it can have more than maxStoredEvents events
+			// And that the stack may contain lower level events than the stackLevel
+			// YAGNI: Consider extract the timed events to a aditional list
+			unsigned int maxStoredEvents;
 
 			std::chrono::year_month_day lastLogDate;
 			std::string logPath;
@@ -90,11 +79,18 @@ namespace IgnacioPomar::Util::StreamLogger
 		public:
 			StackLogger();
 			~StackLogger();
+
+			void fillEvent (EventContainer &event, std::string &eventTxt);
+			void fillElapsedTime (EventContainer &event);
+			void processEvent (EventContainer &event);
+
 			// void delLogsOltherThan (int maxLogFileDays);
 
 			virtual void log (LogLevel logLevel, std::string &event);
 			virtual void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
 			virtual void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
+
+			virtual EventContainer &emplaceEvent (LogLevel logLevel);
 	};
 
 	class StackLoggerMTSafe : public StackLogger
@@ -119,6 +115,8 @@ namespace IgnacioPomar::Util::StreamLogger
 			void log (LogLevel logLevel, std::string &event) override;
 			void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
 			void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
+
+			EventContainer &emplaceEvent (LogLevel logLevel) override;
 	};
 
 }    // namespace IgnacioPomar::Util::StreamLogger
