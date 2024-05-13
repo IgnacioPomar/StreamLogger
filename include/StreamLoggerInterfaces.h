@@ -28,8 +28,7 @@ namespace IgnacioPomar::Util::StreamLogger
 	class LogEventsSubscriber
 	{
 		public:
-			virtual void onLogEvent (const std::string &date, const std::string logTxt,
-			                         const LogLevel logLevel) const = 0;
+			virtual void onLogEvent (const std::string &date, const std::string logTxt, const LogLevel logLevel) = 0;
 	};
 
 	LGGR_API void pullLogEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel);

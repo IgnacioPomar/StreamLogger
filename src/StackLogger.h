@@ -26,8 +26,8 @@ namespace IgnacioPomar::Util::StreamLogger
 	class EventSubscriber
 	{
 		public:
-			EventSubscriber (const LogEventsSubscriber &subscriber, const LogLevel logLevel);
-			const LogEventsSubscriber &subscriber;
+			EventSubscriber (LogEventsSubscriber &subscriber, const LogLevel logLevel);
+			LogEventsSubscriber &subscriber;
 			const LogLevel logLevel;
 	};
 

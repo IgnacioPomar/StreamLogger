@@ -279,7 +279,7 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
-	EventSubscriber::EventSubscriber (const LogEventsSubscriber &subscriber, const LogLevel logLevel)
+	EventSubscriber::EventSubscriber (LogEventsSubscriber &subscriber, const LogLevel logLevel)
 	    : subscriber (subscriber)
 	    , logLevel (logLevel)
 	{

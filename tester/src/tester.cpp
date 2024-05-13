@@ -14,7 +14,7 @@ namespace lggr = IgnacioPomar::Util::StreamLogger;
 class EventReprinter : public lggr::LogEventsSubscriber
 {
 	public:
-		void onLogEvent (const std::string &date, const std::string logTxt, lggr::LogLevel logLevel) const
+		void onLogEvent (const std::string &date, const std::string logTxt, lggr::LogLevel logLevel)
 		{
 			// Parse as json, or save to a database, or whatever action you want
 			std::cout << ">>> EVENT Pulled >>>\t" << date << " [" << lggr::getLevelName (logLevel) << "]\t" << logTxt
@@ -25,7 +25,7 @@ class EventReprinter : public lggr::LogEventsSubscriber
 class PushEventHandler : public lggr::LogEventsSubscriber
 {
 	public:
-		void onLogEvent (const std::string &date, const std::string logTxt, lggr::LogLevel logLevel) const
+		void onLogEvent (const std::string &date, const std::string logTxt, lggr::LogLevel logLevel)
 		{
 			// Use a web service, or call a function, or call a script, or whatever action you want
 			std::cout << "***** PUSH EVENT ***** \t\t" << lggr::getLevelName (logLevel) << "\t\t" << logTxt
