@@ -76,9 +76,17 @@ int main ()
 	lggr::error << line++ << "\tfell asleep,  fell asleep";
 	lggr::fatal << "There is no bridge left! the thieves stole it!!";
 
-	// Show events.... again
+	// Second TEST: ONLY subscriber events
+	lggr::Config::setFileLevel (lggr::LL::OFF);
+	lggr::Config::setStackLevel (lggr::LL::OFF);
+	lggr::Config::setConsoleLevel (lggr::LL::OFF);
+
+	lggr::info << "This message will be ignored";
+	lggr::fatal << "This message will be shown only as push";
+
+	// Show events.... again (except the last one)
 	EventReprinter reprinter;
-	pullLogEvents (reprinter, lggr::LL::ERROR);
+	lggr::pullLogEvents (reprinter, lggr::LL::INFO);
 
 	return 0;
 }

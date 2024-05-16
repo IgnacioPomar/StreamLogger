@@ -69,24 +69,76 @@ namespace IgnacioPomar::Util::StreamLogger
 	void StackLoggerConfig::setLevelColor (LogLevel logLevel, LogColor logColor)
 	{
 		this->levelColors [static_cast<int> (logLevel)] = logColor;
+		this->setEffectiveLevel();
 	}
 
 	void StackLoggerConfig::setConsoleLevel (LogLevel logLevel)
 	{
-		this->consoleLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		// this->consoleLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		this->consoleLevel = logLevel;
+		this->setEffectiveLevel();
 	}
 
 	void StackLoggerConfig::setFileLevel (LogLevel logLevel)
 	{
-		this->fileLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		// this->fileLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+		this->fileLevel = logLevel;
+		this->setEffectiveLevel();
 	}
 
 	void StackLoggerConfig::setStackLevel (LogLevel logLevel)
 	{
 		if (this->maxStoredEvents != 0)
 		{
-			this->stackLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+			// this->stackLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+			this->stackLevel = logLevel;
 		}
+		else
+		{
+			this->stackLevel = LogLevel::OFF;
+		}
+		this->setEffectiveLevel();
+	}
+
+	void StackLoggerConfig::resetSubscriberLevel()
+	{
+		this->subscriberLevel = LogLevel::OFF;
+		this->setEffectiveLevel();
+	}
+
+	void StackLoggerConfig::addSubscriberLevel (LogLevel logLevel)
+	{
+		// LogLevel sbsLevel = (logLevel > LogLevel::FATAL) ? LogLevel::FATAL : logLevel;
+
+		if (logLevel < this->subscriberLevel)
+		{
+			// this->subscriberLevel = sbsLevel;
+			this->subscriberLevel = logLevel;
+		}
+
+		this->setEffectiveLevel();
+	}
+
+	void StackLoggerConfig::setEffectiveLevel()
+	{
+		LogLevel effLevel = this->stackLevel;
+		if (this->consoleLevel < effLevel)
+		{
+			effLevel = this->consoleLevel;
+		}
+		if (this->fileLevel < effLevel)
+		{
+			effLevel = this->fileLevel;
+		}
+		if (this->subscriberLevel < effLevel)
+		{
+			effLevel = this->subscriberLevel;
+		}
+		if (this->stackLevel < effLevel)
+		{
+			effLevel = this->stackLevel;
+		}
+		this->effectiveLevel = effLevel;
 	}
 
 	StackLoggerConfig::StackLoggerConfig()
@@ -95,6 +147,8 @@ namespace IgnacioPomar::Util::StreamLogger
 		this->stackLevel      = DEFAULTS::STACK_LEVEL;
 		this->consoleLevel    = DEFAULTS::CONSOLE_LEVEL;
 		this->fileLevel       = DEFAULTS::FILE_LEVEL;
+
+		this->resetSubscriberLevel();
 
 		this->hasRotation    = true;
 		this->logFilePattern = DEFAULTS::FILE_NAME;

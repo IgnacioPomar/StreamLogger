@@ -16,11 +16,20 @@
 
 #	include <cstdint>
 
+#	ifdef ERROR
+// Define a prefix to avoid conflict with the ERROR macro
+#		define LOG_LEVEL_NEED_PREFIX
+#	else
+// No prefix needed
+#
+#	endif
+
 namespace IgnacioPomar::Util::StreamLogger
 {
 	//--------------  Enums ----------------
 	enum class LogLevel : std::uint8_t
 	{
+#	ifndef LOG_LEVEL_NEED_PREFIX
 		OFF   = 0xff,    // Highest value, used to indicate no logging should be performed.
 		TRACE = 0x00,    // For detailed information, useful during development.
 		DEBUG = 0x01,    // For diagnostic information, helpful in debugging.
@@ -28,6 +37,16 @@ namespace IgnacioPomar::Util::StreamLogger
 		WARN  = 0x03,    // For warnings, potential issues that are not errors.
 		ERROR = 0x04,    // For errors, issues that may affect operation but not critical.
 		FATAL = 0x05     // For critical issues, may require the program to terminate.
+#	else
+		// Avoid Macro in other headers
+		LL_OFF   = 0xff,
+		LL_TRACE = 0x00,
+		LL_DEBUG = 0x01,
+		LL_INFO  = 0x02,
+		LL_WARN  = 0x03,
+		LL_ERROR = 0x04,
+		LL_FATAL = 0x05
+#	endif
 	};
 
 	// Alias for the enum
@@ -52,20 +71,26 @@ namespace IgnacioPomar::Util::StreamLogger
 	//--------------  Default Values ----------------
 	namespace DEFAULTS
 	{
-		inline constexpr const char *FILE_NAME = "%d_StreamedLog.log";
+		constexpr const char *FILE_NAME {"%d_StreamedLog.log"};
 
-		inline constexpr LogColor COLOR_DEBUG = LogColor::WHITE;
-		inline constexpr LogColor COLOR_TRACE = LogColor::GREY;
-		inline constexpr LogColor COLOR_INFO  = LogColor::CYAN;
-		inline constexpr LogColor COLOR_WARN  = LogColor::YELLOW;
-		inline constexpr LogColor COLOR_ERROR = LogColor::RED;
-		inline constexpr LogColor COLOR_FATAL = LogColor::MAGENTA;
+		constexpr LogColor COLOR_DEBUG {LogColor::WHITE};
+		constexpr LogColor COLOR_TRACE {LogColor::GREY};
+		constexpr LogColor COLOR_INFO {LogColor::CYAN};
+		constexpr LogColor COLOR_WARN {LogColor::YELLOW};
+		constexpr LogColor COLOR_ERROR {LogColor::RED};
+		constexpr LogColor COLOR_FATAL {LogColor::MAGENTA};
 
-		inline constexpr LogLevel CONSOLE_LEVEL = LogLevel::INFO;
-		inline constexpr LogLevel FILE_LEVEL    = LogLevel::INFO;
-		inline constexpr LogLevel STACK_LEVEL   = LogLevel::INFO;
+#	ifndef LOG_LEVEL_NEED_PREFIX
+		constexpr LogLevel CONSOLE_LEVEL {LogLevel::INFO};
+		constexpr LogLevel FILE_LEVEL {LogLevel::INFO};
+		constexpr LogLevel STACK_LEVEL {LogLevel::INFO};
+#	else
+		constexpr LogLevel CONSOLE_LEVEL {LogLevel::LL_INFO};
+		constexpr LogLevel FILE_LEVEL {LogLevel::LL_INFO};
+		constexpr LogLevel STACK_LEVEL {LogLevel::LL_INFO};
+#	endif
 
-		inline constexpr int STACK_SIZE = 1000;
+		constexpr int STACK_SIZE {1000};
 	}    // namespace DEFAULTS
 
 }    // namespace IgnacioPomar::Util::StreamLogger

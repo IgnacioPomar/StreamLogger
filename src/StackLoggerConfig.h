@@ -36,14 +36,23 @@ namespace IgnacioPomar::Util::StreamLogger
 			void setFileLevel (LogLevel logLevel);
 			void setStackLevel (LogLevel logLevel);
 
+			void resetSubscriberLevel ();
+			void addSubscriberLevel (LogLevel logLevel);
+
+		private:
+			void setEffectiveLevel ();
+
 		protected:
 			virtual void cleanExcedentEvents () = 0;
 
 		public:    // properties
 			LogColor levelColors [6];
+
 			LogLevel consoleLevel;
 			LogLevel fileLevel;
 			LogLevel stackLevel;
+			LogLevel subscriberLevel;
+			LogLevel effectiveLevel;
 
 			// In the current implementation, the Timed Events are, while running, in the stack
 			// That means that it can have more than maxStoredEvents events

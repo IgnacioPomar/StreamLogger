@@ -48,11 +48,12 @@ namespace IgnacioPomar::Util::StreamLogger
 	void StackLogger::subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel)
 	{
 		subscribers.emplace_back (receiver, logLevel);
+		this->addSubscriberLevel (logLevel);
 	}
 
 	void StackLogger::log (LogLevel logLevel, std::string &event)
 	{
-		if (!(logLevel >= consoleLevel || logLevel >= fileLevel || logLevel >= stackLevel))
+		if (logLevel < this->effectiveLevel)
 		{
 			return;
 		}
@@ -176,18 +177,21 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		// YAGNI: consider a thread for each subscriber if we are in MultiThreadSafe flavor
 		// We would need a thread pool?
-		for (auto &subscriber : subscribers)
+		if (event.logLevel >= this->subscriberLevel)
 		{
-			if (event.logLevel >= subscriber.logLevel)
+			for (auto &subscriber : subscribers)
 			{
-				if (useTimed)
+				if (event.logLevel >= subscriber.logLevel)
 				{
-					subscriber.subscriber.onLogEvent (event.date, event.event + "\tDone in: " + event.usedTimeTxt,
-					                                  event.logLevel);
-				}
-				else
-				{
-					subscriber.subscriber.onLogEvent (event.date, event.event, event.logLevel);
+					if (useTimed)
+					{
+						subscriber.subscriber.onLogEvent (event.date, event.event + "\tDone in: " + event.usedTimeTxt,
+						                                  event.logLevel);
+					}
+					else
+					{
+						subscriber.subscriber.onLogEvent (event.date, event.event, event.logLevel);
+					}
 				}
 			}
 		}
