@@ -4,11 +4,41 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
+#include <stdexcept>
+
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "TestUtils.h"
 
 using Catch::Matchers::Matches;
+
+namespace
+{
+	class FakeLogger : public lggr::BaseStreamLogger
+	{
+		public:
+			bool throwInLog = false;
+			std::vector<std::string> logged;
+
+			void log (std::string &message) override
+			{
+				if (throwInLog)
+				{
+					throw std::runtime_error ("Expected test exception");
+				}
+				logged.push_back (message);
+			}
+	};
+}    // namespace
+
+//-------------- Errors ----------------
+
+TEST_CASE ("An exception while logging does not escape the builder destructor", "[errors]")
+{
+	FakeLogger logger;
+	logger.throwInLog = true;
+	CHECK_NOTHROW (logger << "Lost");
+}
 
 //-------------- Date format ----------------
 

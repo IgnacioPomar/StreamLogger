@@ -72,6 +72,7 @@ All the configuration is in `lggr::Config`. The default values are in `StreamLog
 - **Stack**: the last 1000 events from `INFO` are kept in memory, to be pulled with `pullLogEvents`.
 - **Push subscribers**: `subscribePushEvents` / `unsubscribePushEvents`. A subscriber must unsubscribe before being destroyed. The subscribers are called with the logger locked: they must not log.
 - **Date**: always `YYYY-MM-DD HH:MM:SS.mmm UTC`, with any compiler.
+- **Errors**: the errors while logging inside a destructor (the message builder, a timed event) never escape: they are reported in stderr.
 
 ## Example of use
 

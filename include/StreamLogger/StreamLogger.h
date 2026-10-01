@@ -16,6 +16,7 @@
 #		define LGGR_API
 #	endif
 
+#	include <exception>
 #	include <sstream>
 #	include <string>
 #	include "StreamLoggerConsts.h"
@@ -43,6 +44,12 @@ namespace IgnacioPomar::Util::StreamLogger
 		LGGR_API void setFileLevel (LogLevel logLevel);
 		LGGR_API void setStackLevel (LogLevel logLevel);
 	};    // namespace Config
+
+	namespace Internal
+	{
+		// Last resort error report (stderr): used where an exception can not be thrown, as destructors
+		LGGR_API void reportError (const char *what) noexcept;
+	}    // namespace Internal
 
 	//-------------- Classes to use externally ----------------
 
@@ -112,12 +119,24 @@ namespace IgnacioPomar::Util::StreamLogger
 			LogMessageBuilder (LogMessageBuilder &&other) noexcept
 			    : logger (other.logger)
 			    , message (std::move (other.message)) {};
+			// The destructor can not throw: the errors are reported in stderr
 			~LogMessageBuilder()
 			{
-				if (this->message.rdbuf()->in_avail() > 0)
+				try
 				{
-					std::string msg = message.str();
-					logger.log (msg);
+					if (this->message.rdbuf()->in_avail() > 0)
+					{
+						std::string msg = message.str();
+						logger.log (msg);
+					}
+				}
+				catch (const std::exception &e)
+				{
+					Internal::reportError (e.what());
+				}
+				catch (...)
+				{
+					Internal::reportError ("unknown exception");
 				}
 			};
 

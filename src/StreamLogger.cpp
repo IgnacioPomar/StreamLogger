@@ -35,8 +35,19 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	TimedEvent::~TimedEvent()
 	{
-		// The event has finised, we mark as finished, and reprocess it
-		getLogger().finishTimedEvent (event);
+		try
+		{
+			// The event has finised, we mark as finished, and reprocess it
+			getLogger().finishTimedEvent (event);
+		}
+		catch (const std::exception &e)
+		{
+			Internal::reportError (e.what());
+		}
+		catch (...)
+		{
+			Internal::reportError ("unknown exception finishing a timed event");
+		}
 
 		// YAGNI: If event inder the stackLevel, we should remove it from the stack
 	}
