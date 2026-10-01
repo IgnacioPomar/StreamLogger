@@ -52,24 +52,6 @@ class CollectingSubscriber : public lggr::LogEventsSubscriber
 		}
 };
 
-// Unsubscribes from the singleton logger even if the test fails
-class ScopedPushSubscription
-{
-	public:
-		ScopedPushSubscription (lggr::LogEventsSubscriber &subscriber, lggr::LogLevel logLevel)
-		    : subscriber (subscriber)
-		{
-			lggr::subscribePushEvents (subscriber, logLevel);
-		}
-		~ScopedPushSubscription()
-		{
-			lggr::unsubscribePushEvents (subscriber);
-		}
-
-	private:
-		lggr::LogEventsSubscriber &subscriber;
-};
-
 // Isolated logger, with no output besides the stack
 inline void silence (lggr::StackLogger &logger)
 {

@@ -8,6 +8,7 @@
 #ifndef _STACK_LOGGER_CONFIG_H_
 #	define _STACK_LOGGER_CONFIG_H_
 
+#	include <atomic>
 #	include <list>
 #	include <string>
 #	include <fstream>
@@ -21,6 +22,27 @@
 
 namespace IgnacioPomar::Util::StreamLogger
 {
+	/**
+	 * When to flush an output: after N events of a level, or when the last flush is older than the interval
+	 * (checked when writing an event)
+	 */
+	class FlushPolicy
+	{
+		public:
+			FlushPolicy (const unsigned int (&every) [6], std::chrono::milliseconds interval);
+
+			void setEvery (LogLevel logLevel, unsigned int events);
+
+			// Counts the written event: true if the output must be flushed
+			bool countEvent (LogLevel logLevel, TimePoint now);
+			void flushed (TimePoint now);
+
+			unsigned int every [6];      // 0: never by count
+			unsigned int pending [6];    // Events written since the last flush
+			std::chrono::milliseconds interval;    // 0: disabled
+			TimePoint lastFlush;
+	};
+
 	class StackLoggerConfig
 	{
 		public:    // methods
@@ -36,6 +58,11 @@ namespace IgnacioPomar::Util::StreamLogger
 			void setConsoleLevel (LogLevel logLevel);
 			void setFileLevel (LogLevel logLevel);
 			void setStackLevel (LogLevel logLevel);
+
+			void setFlushEvery (LogLevel logLevel, unsigned int events);
+			void setFlushInterval (std::chrono::milliseconds interval);
+			void setConsoleFlushEvery (LogLevel logLevel, unsigned int events);
+			void setConsoleFlushInterval (std::chrono::milliseconds interval);
 
 			void resetSubscriberLevel ();
 			void addSubscriberLevel (LogLevel logLevel);
@@ -54,7 +81,8 @@ namespace IgnacioPomar::Util::StreamLogger
 			LogLevel fileLevel;
 			LogLevel stackLevel;
 			LogLevel subscriberLevel;
-			LogLevel effectiveLevel;
+			// Read without lock, to discard the messages before formatting them
+			std::atomic<LogLevel> effectiveLevel;
 
 			// In the current implementation, the Timed Events are, while running, in the stack
 			// That means that it can have more than maxStoredEvents events
@@ -68,6 +96,10 @@ namespace IgnacioPomar::Util::StreamLogger
 			std::string logFilename;
 			std::string logFilePattern;
 			bool hasRotation;
+
+			// See DEFAULTS::FLUSH_EVERY and DEFAULTS::CONSOLE_FLUSH_EVERY
+			FlushPolicy fileFlush;
+			FlushPolicy consoleFlush;
 	};
 }    // namespace IgnacioPomar::Util::StreamLogger
 

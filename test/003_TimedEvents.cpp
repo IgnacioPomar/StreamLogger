@@ -18,7 +18,7 @@ TEST_CASE ("A timed event is sent when it starts and when it finishes", "[timed]
 	lggr::Config::setConsoleLevel (lggr::LL::OFF);
 
 	MockSubscriber mock;
-	ScopedPushSubscription subscription (mock, lggr::LL::INFO);
+	auto subscription = lggr::subscribe (mock, lggr::LL::INFO);
 
 	trompeloeil::sequence seq;
 	REQUIRE_CALL (mock, onLogEvent (_, "Task 1", lggr::LL::INFO)).IN_SEQUENCE (seq);
@@ -39,7 +39,7 @@ TEST_CASE ("A timed event below the subscriber level is not sent", "[timed]")
 	lggr::Config::setConsoleLevel (lggr::LL::OFF);
 
 	MockSubscriber mock;
-	ScopedPushSubscription subscription (mock, lggr::LL::WARN);
+	auto subscription = lggr::subscribe (mock, lggr::LL::WARN);
 
 	auto timedEvt = lggr::debug.startTimedEvent();
 	timedEvt << "Not sent";

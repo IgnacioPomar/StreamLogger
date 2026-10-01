@@ -10,6 +10,7 @@
 #include <fstream>
 #include <random>
 #include <sstream>
+#include <thread>
 
 #include "TestUtils.h"
 
@@ -64,6 +65,7 @@ TEST_CASE ("The log file name has the date", "[file]")
 	logger.setFileLevel (lggr::LL::INFO);
 
 	log (logger, lggr::LL::INFO, "First line");
+	logger.flushFile();
 
 	fs::path expected = tmp.path / (today() + "_MyLog.log");
 	REQUIRE (fs::exists (expected));
@@ -75,6 +77,7 @@ TEST_CASE ("The log file name has the date", "[file]")
 		logger.lastLogDate = std::chrono::year_month_day {std::chrono::year (2000), std::chrono::January,
 		                                                  std::chrono::day (1)};
 		log (logger, lggr::LL::INFO, "Second line");
+		logger.flushFile();
 
 		CHECK (logger.logFilePattern == "%d_MyLog.log");
 		CHECK (logger.hasRotation);
@@ -113,6 +116,7 @@ TEST_CASE ("Changing the path opens a new file", "[file]")
 	log (logger, lggr::LL::INFO, "One");
 	logger.setOutPath (second.path.string());
 	log (logger, lggr::LL::INFO, "Two");
+	logger.flushFile();
 
 	CHECK (readFile (first.path / "app.log").find ("Two") == std::string::npos);
 	CHECK (readFile (second.path / "app.log").find ("Two") != std::string::npos);
@@ -139,4 +143,56 @@ TEST_CASE ("A log file that can not be opened disables the file output", "[file]
 	REQUIRE (texts.size() == 2);
 	CHECK (texts [0] == "Lost in the file");
 	CHECK (texts [1].starts_with ("Unable to open log file: /nonexistent/StreamLogger/dir"));
+}
+
+TEST_CASE ("The log file is flushed following the flush policy", "[file]")
+{
+	TmpDir tmp;
+	lggr::StackLogger logger;
+	silence (logger);
+	logger.setOutPath (tmp.path.string());
+	logger.setOutFile ("flush.log");
+	logger.setFileLevel (lggr::LL::INFO);
+	logger.setFlushInterval (std::chrono::milliseconds (0));
+	fs::path file = tmp.path / "flush.log";
+
+	SECTION ("Default: the errors flush, the info do not")
+	{
+		log (logger, lggr::LL::INFO, "Buffered");
+		CHECK (readFile (file).find ("Buffered") == std::string::npos);
+
+		log (logger, lggr::LL::ERROR, "Flushed");
+		std::string content = readFile (file);
+		CHECK (content.find ("Buffered") != std::string::npos);
+		CHECK (content.find ("Flushed") != std::string::npos);
+	}
+
+	SECTION ("Every N events")
+	{
+		logger.setFlushEvery (lggr::LL::INFO, 3);
+		log (logger, lggr::LL::INFO, "One");
+		log (logger, lggr::LL::INFO, "Two");
+		CHECK (readFile (file).find ("One") == std::string::npos);
+		log (logger, lggr::LL::INFO, "Three");
+		CHECK (readFile (file).find ("Three") != std::string::npos);
+	}
+
+	SECTION ("Manual flush")
+	{
+		log (logger, lggr::LL::INFO, "Manual");
+		CHECK (readFile (file).find ("Manual") == std::string::npos);
+		logger.flushFile();
+		CHECK (readFile (file).find ("Manual") != std::string::npos);
+	}
+
+	SECTION ("By interval")
+	{
+		logger.setFlushInterval (std::chrono::milliseconds (20));
+		log (logger, lggr::LL::INFO, "First");    // The first write always flushes (no previous flush)
+		log (logger, lggr::LL::INFO, "Buffered");
+		CHECK (readFile (file).find ("Buffered") == std::string::npos);
+		std::this_thread::sleep_for (std::chrono::milliseconds (30));
+		log (logger, lggr::LL::INFO, "Late");
+		CHECK (readFile (file).find ("Buffered") != std::string::npos);
+	}
 }

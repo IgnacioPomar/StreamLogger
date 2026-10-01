@@ -103,7 +103,7 @@ TEST_CASE ("OFF has no color", "[levels]")
 TEST_CASE ("The stream interface builds the message", "[levels]")
 {
 	CollectingSubscriber collector;
-	ScopedPushSubscription subscription (collector, lggr::LL::WARN);
+	auto subscription = lggr::subscribe (collector, lggr::LL::WARN);
 	lggr::Config::setConsoleLevel (lggr::LL::OFF);
 
 	lggr::warn << "Value: " << 42 << ", " << 1.5;

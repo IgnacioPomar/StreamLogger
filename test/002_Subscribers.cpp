@@ -13,7 +13,7 @@ TEST_CASE ("Push subscribers receive the events of their level or higher", "[sub
 	lggr::StackLogger logger;
 	silence (logger);
 	MockSubscriber mock;
-	logger.subscribePushEvents (mock, lggr::LL::WARN);
+	auto subscription = logger.subscribe (mock, lggr::LL::WARN);
 
 	REQUIRE_CALL (mock, onLogEvent (_, "warn", lggr::LL::WARN));
 	REQUIRE_CALL (mock, onLogEvent (_, "fatal", lggr::LL::FATAL));
@@ -29,8 +29,8 @@ TEST_CASE ("Each subscriber has its own level", "[subscribers]")
 	silence (logger);
 	MockSubscriber all;
 	MockSubscriber errors;
-	logger.subscribePushEvents (all, lggr::LL::TRACE);
-	logger.subscribePushEvents (errors, lggr::LL::ERROR);
+	auto subAll    = logger.subscribe (all, lggr::LL::TRACE);
+	auto subErrors = logger.subscribe (errors, lggr::LL::ERROR);
 
 	REQUIRE_CALL (all, onLogEvent (_, "debug", lggr::LL::DEBUG));
 	REQUIRE_CALL (all, onLogEvent (_, "error", lggr::LL::ERROR));
@@ -47,7 +47,7 @@ TEST_CASE ("A subscriber gets the events even if it is the only output with that
 	logger.setStackLevel (lggr::LL::OFF);
 
 	MockSubscriber mock;
-	logger.subscribePushEvents (mock, lggr::LL::FATAL);
+	auto subscription = logger.subscribe (mock, lggr::LL::FATAL);
 
 	REQUIRE_CALL (mock, onLogEvent (_, "fatal", lggr::LL::FATAL));
 
@@ -55,6 +55,7 @@ TEST_CASE ("A subscriber gets the events even if it is the only output with that
 	log (logger, lggr::LL::FATAL, "fatal");
 }
 
+// The old (not RAII) interface
 TEST_CASE ("Unsubscribed subscribers receive nothing", "[subscribers]")
 {
 	lggr::StackLogger logger;
@@ -99,7 +100,7 @@ TEST_CASE ("Pushed and pulled events have the same date", "[subscribers]")
 	lggr::StackLogger logger;
 	silence (logger);
 	CollectingSubscriber pushed;
-	logger.subscribePushEvents (pushed, lggr::LL::INFO);
+	auto subscription = logger.subscribe (pushed, lggr::LL::INFO);
 
 	log (logger, lggr::LL::INFO, "event");
 
@@ -117,7 +118,7 @@ TEST_CASE ("Subscribers through the public interface", "[subscribers]")
 
 	MockSubscriber mock;
 	{
-		ScopedPushSubscription subscription (mock, lggr::LL::FATAL);
+		auto subscription = lggr::subscribe (mock, lggr::LL::FATAL);
 		REQUIRE_CALL (mock, onLogEvent (_, "Public fatal", lggr::LL::FATAL));
 		lggr::error << "Public error";
 		lggr::fatal << "Public fatal";

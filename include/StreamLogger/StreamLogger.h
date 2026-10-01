@@ -16,8 +16,12 @@
 #		define LGGR_API
 #	endif
 
+#	include <chrono>
+#	include <exception>
+#	include <optional>
 #	include <sstream>
 #	include <string>
+#	include <utility>
 #	include "StreamLoggerConsts.h"
 #	include "StreamLoggerInterfaces.h"
 
@@ -42,7 +46,25 @@ namespace IgnacioPomar::Util::StreamLogger
 		LGGR_API void setConsoleLevel (LogLevel logLevel);
 		LGGR_API void setFileLevel (LogLevel logLevel);
 		LGGR_API void setStackLevel (LogLevel logLevel);
+
+		// The log file is flushed after "events" events of that level (0: never by count)...
+		LGGR_API void setFlushEvery (LogLevel logLevel, unsigned int events);
+		// ... or when an event is written and the last flush is older than the interval (0: disabled)
+		LGGR_API void setFlushInterval (std::chrono::milliseconds interval);
+
+		// The same for the console (it has its own buffer)
+		LGGR_API void setConsoleFlushEvery (LogLevel logLevel, unsigned int events);
+		LGGR_API void setConsoleFlushInterval (std::chrono::milliseconds interval);
+
+		// Flushes the console and the log file
+		LGGR_API void flush ();
 	};    // namespace Config
+
+	namespace Internal
+	{
+		// Last resort error report (stderr): used where an exception can not be thrown, as destructors
+		LGGR_API void reportError (const char *what) noexcept;
+	}    // namespace Internal
 
 	//-------------- Classes to use externally ----------------
 
@@ -57,6 +79,11 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		public:
 			virtual void log (std::string &message) = 0;
+
+			// False if the message would be discarded: use it to avoid expensive computations
+			// (the arguments of << are always evaluated, but are not formatted if it is disabled)
+			virtual bool isEnabled () const = 0;
+
 			template <typename T> friend LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value);
 	};
 
@@ -67,15 +94,16 @@ namespace IgnacioPomar::Util::StreamLogger
 	class LGGR_API TimedEvent : public BaseStreamLogger
 	{
 		private:
-			EventContainer &event;
+			EventContainer *event;    // nullptr if the level was disabled: then, it does nothing
 			bool started = false;
 
 		public:
 			~TimedEvent();
-			TimedEvent (EventContainer &event);
+			explicit TimedEvent (EventContainer *event) noexcept;
 			TimedEvent (const TimedEvent &)            = delete;    // the event is finished on destruction
 			TimedEvent &operator= (const TimedEvent &) = delete;
-			void log (std::string &message);
+			void log (std::string &message) override;
+			bool isEnabled () const override;
 	};
 
 	/**
@@ -88,7 +116,8 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			const LogLevel level;
 
-			void log (std::string &message);
+			void log (std::string &message) override;
+			bool isEnabled () const override;
 
 			TimedEvent startTimedEvent ();
 	};
@@ -106,18 +135,42 @@ namespace IgnacioPomar::Util::StreamLogger
 	class LogMessageBuilder
 	{
 		public:
-			LogMessageBuilder (BaseStreamLogger &logger)
-			    : logger (logger) {};
+			// If the logger is disabled, nothing is formatted (nor the stream is created)
+			explicit LogMessageBuilder (BaseStreamLogger &logger)
+			{
+				if (logger.isEnabled())
+				{
+					this->logger = &logger;
+					this->message.emplace();
+				}
+			};
 			LogMessageBuilder (const LogMessageBuilder &other) = delete;
 			LogMessageBuilder (LogMessageBuilder &&other) noexcept
-			    : logger (other.logger)
+			    : logger (std::exchange (other.logger, nullptr))
 			    , message (std::move (other.message)) {};
+
+			// The destructor can not throw: the errors are reported in stderr
 			~LogMessageBuilder()
 			{
-				if (this->message.rdbuf()->in_avail() > 0)
+				if (this->logger == nullptr)
 				{
-					std::string msg = message.str();
-					logger.log (msg);
+					return;
+				}
+				try
+				{
+					std::string msg = std::move (*this->message).str();
+					if (!msg.empty())
+					{
+						logger->log (msg);
+					}
+				}
+				catch (const std::exception &e)
+				{
+					Internal::reportError (e.what());
+				}
+				catch (...)
+				{
+					Internal::reportError ("unknown exception");
 				}
 			};
 
@@ -125,14 +178,17 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			template <typename T> LogMessageBuilder &operator<< (const T &msg)
 			{
-				this->message << msg;
+				if (this->logger != nullptr)
+				{
+					*this->message << msg;
+				}
 				return *this;
 			}
 
 		private:
-			BaseStreamLogger &logger;
+			BaseStreamLogger *logger = nullptr;
 
-			std::stringstream message;
+			std::optional<std::ostringstream> message;
 	};
 
 	template <typename T> LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value)

@@ -14,6 +14,7 @@
 #		define LGGR_API
 #	endif
 
+#	include <chrono>
 #	include <cstdint>
 
 #	ifdef ERROR
@@ -104,6 +105,15 @@ namespace IgnacioPomar::Util::StreamLogger
 #	endif
 
 		constexpr int STACK_SIZE {1000};
+
+		// Log file flush: after how many events of each level (TRACE..FATAL). 0: only by interval or full buffer
+		constexpr unsigned int FLUSH_EVERY [6] {0, 0, 0, 1, 1, 1};
+		// Max time between flushes (checked when writing an event). 0: disabled
+		constexpr std::chrono::milliseconds FLUSH_INTERVAL {1000};
+
+		// The same for the console
+		constexpr unsigned int CONSOLE_FLUSH_EVERY [6] {0, 0, 1, 1, 1, 1};
+		constexpr std::chrono::milliseconds CONSOLE_FLUSH_INTERVAL {1000};
 	}    // namespace DEFAULTS
 
 }    // namespace IgnacioPomar::Util::StreamLogger

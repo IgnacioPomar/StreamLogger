@@ -69,8 +69,24 @@ All the configuration is in `lggr::Config`. The default values are in `StreamLog
 - **Multi-thread safe** by default. `Config::setMultiThreadSafe (false)` must be called before the first log.
 - **Console**: the output goes to `std::clog` (stderr), from `INFO`. The colors (`Config::setColorMode`) are `AUTO` by default: only if stderr is a terminal and the [`NO_COLOR`](https://no-color.org) environment variable is not set, so journald or Docker do not get ANSI sequences.
 - **File**: disabled by default. Enable it with `Config::setFileLevel`. The file name (`Config::setOutFile`) rotates each day if it has a `%d` (UTC date); the default is `%d_StreamedLog.log`. The path (`Config::setOutPath`) is the working directory by default. If the file can not be opened, the file output is disabled and an `ERROR` event is generated.
+- **File flush**: the file is buffered. It is flushed after `N` events of a level (`Config::setFlushEvery (level, N)`; by default `1` for `WARN`, `ERROR` and `FATAL`, and `0` -never by count- for the rest), when an event is written and the last flush is older than `Config::setFlushInterval` (1 s by default), when the buffer is full, on rotation and on exit. `Config::flush()` forces it. The interval is checked only when writing: an isolated `TRACE` may stay in the buffer until the next event. A flush moves the data to the operating system, it does not guarantee that it is physically on disk.
 - **Stack**: the last 1000 events from `INFO` are kept in memory, to be pulled with `pullLogEvents`.
-- **Push subscribers**: `subscribePushEvents` / `unsubscribePushEvents`. A subscriber must unsubscribe before being destroyed. The subscribers are called with the logger locked: they must not log.
+- **Console flush**: the console has its own buffer, with its own policy: `Config::setConsoleFlushEvery (level, N)` (by default `1` from `INFO`, and `0` for `TRACE` and `DEBUG`) and `Config::setConsoleFlushInterval` (1 s by default). It is also written when the buffer reaches 8 KB, by `Config::flush()` and on exit. As in the file, the interval is only checked when writing: an isolated `DEBUG` may wait until the next event. On Windows with colors, each line is written immediately (the colors are console attributes, not part of the text).
+- **Push subscribers**: `auto subscription = lggr::subscribe (subscriber, level);`. The `Subscription` unsubscribes on destruction, waiting for a running callback, so after that the subscriber can be destroyed safely (if the `Subscription` is a member of the subscriber, declare it the last one). The callbacks are called without the logger locked: they can log, but those events are not pushed to the subscribers. A subscriber is never called concurrently (even if it is subscribed twice), but it can be called from any thread, and the events of different threads may arrive in a different order than in the stack. A slow subscriber only delays the threads that log events for it. An exception thrown by a callback is reported in stderr and ignored. `subscribePushEvents` / `unsubscribePushEvents` are deprecated.
+- **Date**: always `YYYY-MM-DD HH:MM:SS.mmm UTC`, with any compiler.
+
+## Performance notes
+
+- A message below every configured level is discarded before formatting it: no stream is created and nothing is formatted. But the arguments of `<<` are always evaluated (C++ evaluates them before calling the operator). For expensive values, check the level first:
+
+```cpp
+if (lggr::debug.isEnabled())
+{
+	lggr::debug << "State: " << computeExpensiveDump();
+}
+```
+
+- The errors while logging inside a destructor (the message builder, a timed event) never escape: they are reported in stderr.
 
 ## Example of use
 
@@ -109,7 +125,7 @@ int main ()
 	lggr::Config::setMultiThreadSafe (true);    // Already the default
 
 	PushEventHandler pushHandler;
-	lggr::subscribePushEvents (pushHandler, lggr::LL::FATAL);
+	auto pushSubscription = lggr::subscribe (pushHandler, lggr::LL::FATAL);    // Unsubscribes on destruction
 
 	// Default values in StreamLogger::DEFAULTS, defined in StreamLoggerConsts.h
 	lggr::Config::setStackLevel (lggr::LogLevel::INFO);
@@ -160,8 +176,6 @@ int main ()
 	EventReprinter reprinter;
 	lggr::pullLogEvents (reprinter, lggr::LL::INFO);
 
-	lggr::unsubscribePushEvents (pushHandler);
-
 	return 0;
 }
 ```
@@ -169,33 +183,33 @@ This example sets up logging levels, logs various messages, and demonstrates how
 
 This will output something similar to (with colors):
 ```	
-2024-04-17 15:28:07.2128489 [TRACE]     0       Song: London Bridge is falling down
-2024-04-17 15:28:07.2142945 [DEBUG]     1       Falling down, falling down
-2024-04-17 15:28:07.2152041 [DEBUG]     2       London Bridge is falling down
-2024-04-17 15:28:07.2155484 [DEBUG]     3       My fair lady
-2024-04-17 15:28:07.2159025 [INFO]      4       Build it up with iron bars
-2024-04-17 15:28:07.2163818 [INFO]      5       Iron bars, iron bars
-2024-04-17 15:28:07.2167742 [INFO]      6       Build it up with iron bars
-2024-04-17 15:28:07.2171096 [DEBUG]     7       My fair lady
-2024-04-17 15:28:07.2174377 [WARN]      8       Iron bars will bend and break
-2024-04-17 15:28:07.2182144 [WARN]      9       Bend and break, bend and break
-2024-04-17 15:28:07.2195249 [WARN]      10      Iron bars will bend and break
-2024-04-17 15:28:07.2200839 [DEBUG]     11      My fair lady
-2024-04-17 15:28:07.2206127 [INFO]      12      Build it up with silver and gold
-2024-04-17 15:28:07.2212500 [INFO]      13      Silver and gold, silver and gold
-2024-04-17 15:28:07.2217964 [INFO]      14      Build it up with silver and gold
-2024-04-17 15:28:07.2222301 [DEBUG]     15      My fair lady
-2024-04-17 15:28:07.2227241 [INFO]      16      Set a man to watch all night
-2024-04-17 15:28:07.2231234 [ERROR]     17      Suppose the man should fall asleep
-2024-04-17 15:28:07.2235053 [FATAL]     18      The man finally fell asleep, the man finally fell asleep
+2024-04-17 15:28:07.212 UTC [TRACE]     0       Song: London Bridge is falling down
+2024-04-17 15:28:07.214 UTC [DEBUG]     1       Falling down, falling down
+2024-04-17 15:28:07.215 UTC [DEBUG]     2       London Bridge is falling down
+2024-04-17 15:28:07.215 UTC [DEBUG]     3       My fair lady
+2024-04-17 15:28:07.215 UTC [INFO]      4       Build it up with iron bars
+2024-04-17 15:28:07.216 UTC [INFO]      5       Iron bars, iron bars
+2024-04-17 15:28:07.216 UTC [INFO]      6       Build it up with iron bars
+2024-04-17 15:28:07.217 UTC [DEBUG]     7       My fair lady
+2024-04-17 15:28:07.217 UTC [WARN]      8       Iron bars will bend and break
+2024-04-17 15:28:07.218 UTC [WARN]      9       Bend and break, bend and break
+2024-04-17 15:28:07.219 UTC [WARN]      10      Iron bars will bend and break
+2024-04-17 15:28:07.220 UTC [DEBUG]     11      My fair lady
+2024-04-17 15:28:07.220 UTC [INFO]      12      Build it up with silver and gold
+2024-04-17 15:28:07.221 UTC [INFO]      13      Silver and gold, silver and gold
+2024-04-17 15:28:07.221 UTC [INFO]      14      Build it up with silver and gold
+2024-04-17 15:28:07.222 UTC [DEBUG]     15      My fair lady
+2024-04-17 15:28:07.222 UTC [INFO]      16      Set a man to watch all night
+2024-04-17 15:28:07.223 UTC [ERROR]     17      Suppose the man should fall asleep
+2024-04-17 15:28:07.223 UTC [FATAL]     18      The man finally fell asleep, the man finally fell asleep
 ***** PUSH EVENT *****          FATAL           18      The man finally fell asleep, the man finally fell asleep
-2024-04-17 15:28:07.2240149 [ERROR]     19      fell asleep,  fell asleep
-2024-04-17 15:28:07.2243657 [FATAL]     There is no bridge left! the thieves stole it!!
+2024-04-17 15:28:07.224 UTC [ERROR]     19      fell asleep,  fell asleep
+2024-04-17 15:28:07.224 UTC [FATAL]     There is no bridge left! the thieves stole it!!
 ***** PUSH EVENT *****          FATAL           There is no bridge left! the thieves stole it!!
->>> EVENT Pulled >>>    2024-04-17 15:28:07.2231234 [ERROR]     17      Suppose the man should fall asleep
->>> EVENT Pulled >>>    2024-04-17 15:28:07.2235053 [FATAL]     18      The man finally fell asleep, the man finally fell asleep
->>> EVENT Pulled >>>    2024-04-17 15:28:07.2240149 [ERROR]     19      fell asleep,  fell asleep
->>> EVENT Pulled >>>    2024-04-17 15:28:07.2243657 [FATAL]     There is no bridge left! the thieves stole it!!
+>>> EVENT Pulled >>>    2024-04-17 15:28:07.223 UTC [ERROR]     17      Suppose the man should fall asleep
+>>> EVENT Pulled >>>    2024-04-17 15:28:07.223 UTC [FATAL]     18      The man finally fell asleep, the man finally fell asleep
+>>> EVENT Pulled >>>    2024-04-17 15:28:07.224 UTC [ERROR]     19      fell asleep,  fell asleep
+>>> EVENT Pulled >>>    2024-04-17 15:28:07.224 UTC [FATAL]     There is no bridge left! the thieves stole it!!
 ```
 
 

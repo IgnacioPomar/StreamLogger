@@ -9,6 +9,18 @@
 
 namespace IgnacioPomar::Util::StreamLogger
 {
+#ifdef _WIN32
+	// The colors are console attributes, not part of the text: the colored lines can not be buffered
+	constexpr bool IN_BAND_COLORS = false;
+#else
+	// The colors are ANSI sequences inside the text
+	constexpr bool IN_BAND_COLORS = true;
+#endif
+
+	// ANSI sequences, to buffer colored text (empty if not IN_BAND_COLORS)
+	const char *ansiColor (LogColor color);
+	const char *ansiReset ();
+
 	// Console colors (the console output is std::clog)
 	void setConsoleColor (LogColor color);
 	void resetConsoleColor ();

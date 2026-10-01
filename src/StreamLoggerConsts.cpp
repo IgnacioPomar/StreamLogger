@@ -8,6 +8,8 @@
 #include "StreamLogger/StreamLogger.h"
 #include "StackLogger.h"
 
+#include <cstdio>
+
 namespace IgnacioPomar::Util::StreamLogger
 {
 	const std::string logLevelNames [7] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF"};
@@ -28,11 +30,27 @@ namespace IgnacioPomar::Util::StreamLogger
 		return logLevelNames [(lvl < 6) ? lvl : 6];
 	}
 
+	namespace Internal
+	{
+		void reportError (const char *what) noexcept
+		{
+			// No allocations: it may be reporting a bad_alloc
+			std::fputs ("StreamLogger: error while logging: ", stderr);
+			std::fputs ((what != nullptr) ? what : "unknown", stderr);
+			std::fputs ("\n", stderr);
+		}
+	}    // namespace Internal
+
 	//-------------- Event retransmission ----------------
 
 	void pullLogEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel)
 	{
 		getLogger().sendEvents (subscriber, logLevel);
+	}
+
+	Subscription subscribe (LogEventsSubscriber &subscriber, const LogLevel logLevel)
+	{
+		return getLogger().subscribe (subscriber, logLevel);
 	}
 
 	void subscribePushEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel)

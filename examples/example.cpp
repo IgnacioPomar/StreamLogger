@@ -30,7 +30,7 @@ int main ()
 	lggr::Config::setMultiThreadSafe (true);    // Already the default
 
 	PushEventHandler pushHandler;
-	lggr::subscribePushEvents (pushHandler, lggr::LL::FATAL);
+	auto pushSubscription = lggr::subscribe (pushHandler, lggr::LL::FATAL);    // Unsubscribes on destruction
 
 	// Default values in StreamLogger::DEFAULTS, defined in StreamLoggerConsts.h
 	lggr::Config::setStackLevel (lggr::LogLevel::INFO);
@@ -80,8 +80,6 @@ int main ()
 	// Show events.... again (except the last one)
 	EventReprinter reprinter;
 	lggr::pullLogEvents (reprinter, lggr::LL::INFO);
-
-	lggr::unsubscribePushEvents (pushHandler);
 
 	return 0;
 }
