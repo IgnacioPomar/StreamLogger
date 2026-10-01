@@ -28,6 +28,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			const char *name;
 			const char *description;
 			const char *version;    // "MAJOR.MINOR.PATCH"
+			const char *buildDate;    // "YYYY-MM-DD HH:MM:SS", local time of the machine that built the library
 			int versionMajor;
 			int versionMinor;
 			int versionPatch;

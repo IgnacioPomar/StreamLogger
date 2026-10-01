@@ -27,6 +27,15 @@ set(STREAMLOGGER_SOURCES
 )
 
 add_library(StreamLogger ${STREAMLOGGER_SOURCES})
+
+# The build date (getLibraryInfo) is taken when StreamLoggerVersion.cpp is compiled: recompile it on any change
+file(GLOB STREAMLOGGER_HEADERS CONFIGURE_DEPENDS include/StreamLogger/*.h src/*.h)
+set(STREAMLOGGER_OTHER_SOURCES ${STREAMLOGGER_SOURCES})
+list(REMOVE_ITEM STREAMLOGGER_OTHER_SOURCES src/StreamLoggerVersion.cpp)
+list(TRANSFORM STREAMLOGGER_OTHER_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/)
+set_source_files_properties(src/StreamLoggerVersion.cpp PROPERTIES
+    OBJECT_DEPENDS "${STREAMLOGGER_OTHER_SOURCES};${STREAMLOGGER_HEADERS}"
+)
 add_library(StreamLogger::StreamLogger ALIAS StreamLogger)
 
 target_include_directories(StreamLogger PUBLIC
