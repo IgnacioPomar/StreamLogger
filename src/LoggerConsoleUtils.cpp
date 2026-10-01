@@ -4,10 +4,15 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
-#include "StreamLogger.h"
+#include <cstdio>
+#include <cstdlib>
+
+#include "StreamLogger/StreamLogger.h"
+#include "LoggerConsoleUtils.h"
 
 // Windows.h must be in the last as ERROR is redefined
 #ifdef _WIN32
+#	include <io.h>
 #	include <Windows.h>
 
 // Define extra colours
@@ -42,7 +47,7 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	HANDLE GetConsoleHandle ()
 	{
-		static HANDLE hConsole = GetStdHandle (STD_OUTPUT_HANDLE);
+		static HANDLE hConsole = GetStdHandle (STD_ERROR_HANDLE);
 		return hConsole;
 	}
 
@@ -68,10 +73,16 @@ namespace IgnacioPomar::Util::StreamLogger
 		SetConsoleTextAttribute (GetConsoleHandle(), FOREGROUND_WHITE);
 	}
 
+	bool isColorConsole ()
+	{
+		return _isatty (_fileno (stderr)) && std::getenv ("NO_COLOR") == nullptr;
+	}
+
 }    // namespace IgnacioPomar::Util::StreamLogger
 
 #else    //_WIN32
 #	include <iostream>
+#	include <unistd.h>
 
 namespace IgnacioPomar::Util::StreamLogger
 {
@@ -103,7 +114,12 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	void resetConsoleColor ()
 	{
-		std::cout << "\033[0m";
+		std::clog << "\033[0m";
+	}
+
+	bool isColorConsole ()
+	{
+		return isatty (fileno (stderr)) && std::getenv ("NO_COLOR") == nullptr;
 	}
 }    // namespace IgnacioPomar::Util::StreamLogger
 #endif    //_WIN32

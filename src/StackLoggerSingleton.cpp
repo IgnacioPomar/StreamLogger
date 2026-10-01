@@ -4,16 +4,16 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
-#include "StreamLoggerConsts.h"
+#include "StreamLogger/StreamLoggerConsts.h"
 #include "StackLogger.h"
-#include "StreamLogger.h"
+#include "StreamLogger/StreamLogger.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
 
 	//--------------  Static values: Configuration Vars ----------------
 
-	bool gMultiThreadSafe    = false;
+	bool gMultiThreadSafe    = DEFAULTS::MULTI_THREAD_SAFE;
 	bool isLoggerInitialized = false;
 
 	StackLogger &initSTDLogger ()

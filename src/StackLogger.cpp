@@ -8,11 +8,13 @@
 #	include <format>
 #endif
 #include <chrono>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 #include <filesystem>
 
-#include "StreamLoggerConsts.h"
+#include "StreamLogger/StreamLoggerConsts.h"
 
 #include "LoggerConsoleUtils.h"
 
@@ -51,6 +53,17 @@ namespace IgnacioPomar::Util::StreamLogger
 		this->addSubscriberLevel (logLevel);
 	}
 
+	void StackLogger::unsubscribePushEvents (LogEventsSubscriber &receiver)
+	{
+		subscribers.remove_if ([&receiver] (const EventSubscriber &s) { return &s.subscriber == &receiver; });
+
+		this->resetSubscriberLevel();
+		for (auto &subscriber : subscribers)
+		{
+			this->addSubscriberLevel (subscriber.logLevel);
+		}
+	}
+
 	void StackLogger::log (LogLevel logLevel, std::string &event)
 	{
 		if (logLevel < this->effectiveLevel)
@@ -58,6 +71,12 @@ namespace IgnacioPomar::Util::StreamLogger
 			return;
 		}
 
+		this->storeAndProcess (logLevel, event);
+		this->cleanExcedentEvents();
+	}
+
+	void StackLogger::storeAndProcess (LogLevel logLevel, std::string &event)
+	{
 		if (maxStoredEvents > 0 && logLevel >= stackLevel)
 		{
 			EventContainer &newEvent = this->events.emplace_back (logLevel);
@@ -70,13 +89,33 @@ namespace IgnacioPomar::Util::StreamLogger
 			fillEvent (tmpEvent, event);
 			this->processEvent (tmpEvent);
 		}
-
-		this->cleanExcedentEvents();
 	}
 
 	EventContainer &StackLogger::emplaceEvent (LogLevel logLevel)
 	{
 		return events.emplace_back (logLevel);
+	}
+
+	void StackLogger::startTimedEvent (EventContainer &event, std::string &eventTxt)
+	{
+		this->fillEvent (event, eventTxt);
+		this->processEvent (event);
+	}
+
+	void StackLogger::appendToTimedEvent (EventContainer &event, const std::string &eventTxt)
+	{
+		event.event += eventTxt;
+	}
+
+	void StackLogger::finishTimedEvent (EventContainer &event)
+	{
+		this->fillElapsedTime (event);
+		this->processEvent (event);
+	}
+
+	void StackLogger::runLocked (const std::function<void()> &action)
+	{
+		action();
 	}
 
 	void StackLogger::sendToConsole (EventContainer &event, bool useTimed)
@@ -88,9 +127,10 @@ namespace IgnacioPomar::Util::StreamLogger
 			{
 				lvl = static_cast<int> (LogLevel::FATAL);
 			}
-			LogColor lc = levelColors [lvl];
-
-			setConsoleColor (lc);
+			if (useColors)
+			{
+				setConsoleColor (levelColors [lvl]);
+			}
 			std::clog << event.date << " [" << getLevelName (event.logLevel) << "]\t";
 			std::clog << event.event;
 			if (useTimed)
@@ -98,7 +138,10 @@ namespace IgnacioPomar::Util::StreamLogger
 				std::clog << "\tDone in: " << event.usedTimeTxt;
 			}
 			std::clog << std::endl;
-			resetConsoleColor();
+			if (useColors)
+			{
+				resetConsoleColor();
+			}
 		}
 	}
 
@@ -134,7 +177,8 @@ namespace IgnacioPomar::Util::StreamLogger
 					size_t pos = logFilePattern.find ("%d");
 					if (pos != std::string::npos)
 					{
-						this->logFilename = logFilePattern.replace (pos, 2, formattedDate);
+						this->logFilename = logFilePattern;
+						this->logFilename.replace (pos, 2, formattedDate);
 					}
 					else
 					{
@@ -154,9 +198,10 @@ namespace IgnacioPomar::Util::StreamLogger
 					this->fileLevel = LogLevel::OFF;
 
 					// Generate event: unable to open log File
+					// Not with log(): we are inside it (and, in the MT safe logger, with the mutex locked)
 					std::string msg ("Unable to open log file: ");
 					msg += filePath.string();
-					this->log (LL::ERROR, msg);
+					this->storeAndProcess (LL::ERROR, msg);
 				}
 			}
 
@@ -168,7 +213,7 @@ namespace IgnacioPomar::Util::StreamLogger
 				{
 					this->logfile << "\tDone in: " << event.usedTimeTxt;
 				}
-				this->logfile << '\n';
+				this->logfile << std::endl;    // A service may die without closing the file
 			}
 		}
 	}
@@ -247,7 +292,7 @@ namespace IgnacioPomar::Util::StreamLogger
 		{
 			event.usedTimeTxt += std::to_string (seconds.count()) + "\" ";
 		}
-		if (milliseconds.count() > 0)
+		if (milliseconds.count() > 0 || event.usedTimeTxt.empty())
 		{
 			event.usedTimeTxt += std::to_string (milliseconds.count()) + "ms";
 		}
@@ -316,10 +361,40 @@ namespace IgnacioPomar::Util::StreamLogger
 		StackLogger::subscribePushEvents (receiver, logLevel);
 	}
 
+	void StackLoggerMTSafe::unsubscribePushEvents (LogEventsSubscriber &receiver)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		StackLogger::unsubscribePushEvents (receiver);
+	}
+
 	EventContainer &StackLoggerMTSafe::emplaceEvent (LogLevel logLevel)
 	{
 		std::lock_guard<std::mutex> lock (this->mtx);
 		return StackLogger::emplaceEvent (logLevel);
+	}
+
+	void StackLoggerMTSafe::startTimedEvent (EventContainer &event, std::string &eventTxt)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		StackLogger::startTimedEvent (event, eventTxt);
+	}
+
+	void StackLoggerMTSafe::appendToTimedEvent (EventContainer &event, const std::string &eventTxt)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		StackLogger::appendToTimedEvent (event, eventTxt);
+	}
+
+	void StackLoggerMTSafe::finishTimedEvent (EventContainer &event)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		StackLogger::finishTimedEvent (event);
+	}
+
+	void StackLoggerMTSafe::runLocked (const std::function<void()> &action)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		action();
 	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger

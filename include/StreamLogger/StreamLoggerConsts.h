@@ -68,6 +68,14 @@ namespace IgnacioPomar::Util::StreamLogger
 		// MAYBE: Add colors with background
 	};
 
+	// When to send ANSI colors (or the Windows console attributes) to the console
+	enum class ColorMode : std::uint8_t
+	{
+		AUTO,      // Only if the console is a terminal and NO_COLOR is not set
+		ALWAYS,
+		NEVER
+	};
+
 	//--------------  Default Values ----------------
 	namespace DEFAULTS
 	{
@@ -80,13 +88,18 @@ namespace IgnacioPomar::Util::StreamLogger
 		constexpr LogColor COLOR_ERROR {LogColor::RED};
 		constexpr LogColor COLOR_FATAL {LogColor::MAGENTA};
 
+		constexpr ColorMode COLOR_MODE {ColorMode::AUTO};
+
+		// A service is multi-threaded by default: the mutex cost is negligible compared with the output
+		constexpr bool MULTI_THREAD_SAFE {true};
+
 #	ifndef LOG_LEVEL_NEED_PREFIX
 		constexpr LogLevel CONSOLE_LEVEL {LogLevel::INFO};
-		constexpr LogLevel FILE_LEVEL {LogLevel::INFO};
+		constexpr LogLevel FILE_LEVEL {LogLevel::OFF};    // No file unless configured
 		constexpr LogLevel STACK_LEVEL {LogLevel::INFO};
 #	else
 		constexpr LogLevel CONSOLE_LEVEL {LogLevel::LL_INFO};
-		constexpr LogLevel FILE_LEVEL {LogLevel::LL_INFO};
+		constexpr LogLevel FILE_LEVEL {LogLevel::LL_OFF};
 		constexpr LogLevel STACK_LEVEL {LogLevel::LL_INFO};
 #	endif
 

@@ -37,6 +37,7 @@ namespace IgnacioPomar::Util::StreamLogger
 		LGGR_API void setOutFile (const std::string fileName);    // It'll rotate each day if the template has a %d
 		LGGR_API void setOutPath (const std::string filePath);
 		LGGR_API void setLevelColor (LogLevel logLevel, LogColor logColor);
+		LGGR_API void setColorMode (ColorMode colorMode);
 
 		LGGR_API void setConsoleLevel (LogLevel logLevel);
 		LGGR_API void setFileLevel (LogLevel logLevel);
@@ -72,6 +73,8 @@ namespace IgnacioPomar::Util::StreamLogger
 		public:
 			~TimedEvent();
 			TimedEvent (EventContainer &event);
+			TimedEvent (const TimedEvent &)            = delete;    // the event is finished on destruction
+			TimedEvent &operator= (const TimedEvent &) = delete;
 			void log (std::string &message);
 	};
 
@@ -136,7 +139,7 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		LogMessageBuilder tmpBuilder (logger);
 		tmpBuilder << value;
-		return std::move (tmpBuilder);
+		return tmpBuilder;
 	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger

@@ -8,8 +8,7 @@
 #ifndef _LGGR_CFG_H_
 #	define _LGGR_CFG_H_
 
-// If the solution is a dinamic library (dll), we need the next macro
-#	define LGGR_DLL
+// LGGR_DLL is defined by the build system (CMake) when StreamLogger is built as a shared library
 
 // IMPORTANT: the project who exports must have the preprocessor macro STREAMLOGGER_EXPORTS
 

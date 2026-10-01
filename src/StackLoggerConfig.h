@@ -15,8 +15,8 @@
 
 #	include <mutex>
 
-#	include "StreamLoggerInterfaces.h"
-#	include "StreamLoggerConsts.h"
+#	include "StreamLogger/StreamLoggerInterfaces.h"
+#	include "StreamLogger/StreamLoggerConsts.h"
 #	include "EventContainer.h"
 
 namespace IgnacioPomar::Util::StreamLogger
@@ -31,6 +31,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			void setOutFile (const std::string fileName);    // It'll rotate each day if the template has a %d
 			void setOutPath (const std::string filePath);
 			void setLevelColor (LogLevel logLevel, LogColor logColor);
+			void setColorMode (ColorMode colorMode);
 
 			void setConsoleLevel (LogLevel logLevel);
 			void setFileLevel (LogLevel logLevel);
@@ -47,6 +48,7 @@ namespace IgnacioPomar::Util::StreamLogger
 
 		public:    // properties
 			LogColor levelColors [6];
+			bool useColors;    // Resolved from the ColorMode
 
 			LogLevel consoleLevel;
 			LogLevel fileLevel;

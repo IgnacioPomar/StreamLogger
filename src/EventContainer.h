@@ -12,7 +12,7 @@
 #	include <chrono>
 #	include <cstdint>
 
-#	include "StreamLoggerConsts.h"
+#	include "StreamLogger/StreamLoggerConsts.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
@@ -30,7 +30,7 @@ namespace IgnacioPomar::Util::StreamLogger
 	constexpr std::uint8_t EVENT_TYPE_RUNNING = 0b0100'0000;
 	constexpr std::uint8_t EVENT_TYPE_TIMED   = 0b1000'0000;
 
-	constexpr std::uint8_t EVENT_TYPE_TIMED_RUNNING  = EVENT_TYPE_TIMED & EVENT_TYPE_RUNNING;
+	constexpr std::uint8_t EVENT_TYPE_TIMED_RUNNING  = EVENT_TYPE_TIMED | EVENT_TYPE_RUNNING;
 	constexpr std::uint8_t EVENT_TYPE_TIMED_FINISHED = EVENT_TYPE_TIMED;
 
 	/**

@@ -1,13 +1,5 @@
 ﻿#include <iostream>
-#include "StreamLogger.h"
-
-#ifdef _DEBUG
-#	define END_LIB_STD "d.lib"
-#else
-#	define END_LIB_STD ".lib"
-#endif
-
-#pragma comment(lib, "StreamLogger" END_LIB_STD)
+#include "StreamLogger/StreamLogger.h"
 
 namespace lggr = IgnacioPomar::Util::StreamLogger;
 
@@ -35,7 +27,7 @@ class PushEventHandler : public lggr::LogEventsSubscriber
 
 int main ()
 {
-	lggr::Config::setMultiThreadSafe (true);
+	lggr::Config::setMultiThreadSafe (true);    // Already the default
 
 	PushEventHandler pushHandler;
 	lggr::subscribePushEvents (pushHandler, lggr::LL::FATAL);
@@ -43,8 +35,9 @@ int main ()
 	// Default values in StreamLogger::DEFAULTS, defined in StreamLoggerConsts.h
 	lggr::Config::setStackLevel (lggr::LogLevel::INFO);
 	lggr::Config::setConsoleLevel (lggr::LL::TRACE);
-	// lggr::Config::setFileLevel (lggr::LL::INFO);
-	// lggr::Config::setOutPath ("./logs"); //Default is the executable path
+	lggr::Config::setFileLevel (lggr::LL::INFO);    // Default is OFF: no log file
+	// lggr::Config::setOutPath ("./logs"); //Default is the working directory
+	// lggr::Config::setColorMode (lggr::ColorMode::NEVER); //Default is AUTO: only in a terminal
 	lggr::Config::setOutFile ("%d_MyLog.log");
 
 	int line = 0;
@@ -87,6 +80,8 @@ int main ()
 	// Show events.... again (except the last one)
 	EventReprinter reprinter;
 	lggr::pullLogEvents (reprinter, lggr::LL::INFO);
+
+	lggr::unsubscribePushEvents (pushHandler);
 
 	return 0;
 }
