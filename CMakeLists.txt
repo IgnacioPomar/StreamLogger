@@ -30,17 +30,17 @@ set(STREAMLOGGER_SOURCES
     src/StackLoggerSingleton.cpp
     src/StreamLogger.cpp
     src/StreamLoggerConsts.cpp
-    src/StreamLoggerVersion.cpp
+    src/LibraryInfo.cpp
 )
 
 add_library(StreamLogger ${STREAMLOGGER_SOURCES})
 
-# The build date (getLibraryInfo) is taken when StreamLoggerVersion.cpp is compiled: recompile it on any change
+# The build date (getLibraryInfo) is taken when LibraryInfo.cpp is compiled: recompile it on any change
 file(GLOB STREAMLOGGER_HEADERS CONFIGURE_DEPENDS include/StreamLogger/*.h src/*.h)
 set(STREAMLOGGER_OTHER_SOURCES ${STREAMLOGGER_SOURCES})
-list(REMOVE_ITEM STREAMLOGGER_OTHER_SOURCES src/StreamLoggerVersion.cpp)
+list(REMOVE_ITEM STREAMLOGGER_OTHER_SOURCES src/LibraryInfo.cpp)
 list(TRANSFORM STREAMLOGGER_OTHER_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/)
-set_source_files_properties(src/StreamLoggerVersion.cpp PROPERTIES
+set_source_files_properties(src/LibraryInfo.cpp PROPERTIES
     OBJECT_DEPENDS "${STREAMLOGGER_OTHER_SOURCES};${STREAMLOGGER_HEADERS}"
 )
 add_library(StreamLogger::StreamLogger ALIAS StreamLogger)
@@ -91,7 +91,7 @@ if(STREAMLOGGER_BUILD_TESTS)
         test/005_Console.cpp
         test/006_MultiThread.cpp
         test/007_Hardening.cpp
-        test/008_Version.cpp
+        test/008_LibraryInfo.cpp
     )
     target_include_directories(StreamLoggerTester PRIVATE src)
     target_link_libraries(StreamLoggerTester PRIVATE StreamLogger Catch2::Catch2WithMain trompeloeil::trompeloeil)

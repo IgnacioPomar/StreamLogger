@@ -4,8 +4,7 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
-#include "StreamLogger/StreamLogger.h"
-#include "StreamLogger/StreamLoggerVersion.h"
+#include "StreamLogger/LibraryInfo.h"
 
 #include <array>
 #include <string_view>
