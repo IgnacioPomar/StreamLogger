@@ -25,6 +25,9 @@ class StreamLoggerConan(ConanFile):
         "build_tests": False,
     }
 
+    # Only the recipe is published: build it with the consumer's toolchain, without asking for --build
+    build_policy = "missing"
+
     exports_sources = "CMakeLists.txt", "include/*", "src/*", "test/*", "examples/*"
 
     def set_version(self):

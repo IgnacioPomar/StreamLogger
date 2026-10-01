@@ -1,6 +1,7 @@
 name: Release
 
-# Push a tag vX.Y.Z (the version in CMakeLists.txt) to publish the package in the Forgejo Conan registry
+# Push a tag vX.Y.Z (the version in CMakeLists.txt) to publish the recipe in the Forgejo Conan registry.
+# Only the recipe and its sources are uploaded: each consumer builds the library with its own toolchain (C++ ABI)
 on:
   push:
     tags: ['v*']
@@ -30,13 +31,12 @@ jobs:
           conan profile detect --force
           conan remote add forgejo "${{ github.server_url }}/api/packages/${{ github.repository_owner }}/conan"
 
-      # --version fails if the tag does not match the CMakeLists.txt version (set_version)
-      - name: Create the packages (shared and static)
+      # Validation before publishing. --version fails if the tag does not match the CMakeLists.txt version
+      - name: Build the packages (shared and static) and run the test_package
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           conan create . --version "$VERSION" --build=missing -s compiler.cppstd=20
           conan create . --version "$VERSION" --build=missing -s compiler.cppstd=20 -o "streamlogger/*:shared=False"
 
-      # The recipe is uploaded with its sources (exports_sources): other configurations can --build=missing
-      - name: Upload to the Forgejo Conan registry
-        run: conan upload "streamlogger/${GITHUB_REF_NAME#v}" -r forgejo --confirm
+      - name: Upload the recipe and its sources to the Forgejo Conan registry
+        run: conan upload "streamlogger/${GITHUB_REF_NAME#v}" -r forgejo --only-recipe --confirm

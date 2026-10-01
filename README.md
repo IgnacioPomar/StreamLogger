@@ -49,7 +49,7 @@ conan create . --build=missing -s compiler.cppstd=20
 
 The package is a shared library by default (`libStreamLogger.so`); use `-o "streamlogger/*:shared=False"` for the static one. `conan create` also builds and runs `test_package/`.
 
-The published packages are in the Conan registry of Forgejo:
+The recipe (with the sources) is published in the Conan registry of Forgejo. No binaries are published: the library is built from source by each consumer, with its own compiler and settings (`build_policy = "missing"`, so `--build` is not needed):
 
 ```bash
 conan remote add forgejo https://<forgejo>/api/packages/Commons/conan
@@ -78,7 +78,7 @@ target_link_libraries(myTarget PRIVATE StreamLogger::StreamLogger)
 The Forgejo Actions workflows are in `.forgejo/workflows/`:
 
 - `ci.yml`: on every push and pull request, runs the unit tests and `conan create`.
-- `release.yml`: on a `vX.Y.Z` tag, creates the shared and static packages and uploads them (recipe and sources included) to the Forgejo Conan registry. It needs the `CONAN_USER` and `CONAN_TOKEN` (`write:package` scope) secrets.
+- `release.yml`: on a `vX.Y.Z` tag, builds the shared and static packages (with the `test_package`) and uploads only the recipe and its sources to the Forgejo Conan registry. It needs the `CONAN_USER` and `CONAN_TOKEN` (`write:package` scope) secrets.
 
 The version is only written in `CMakeLists.txt` (`project(StreamLogger VERSION x.y.z)`): the Conan recipe reads it, and it gives the SONAME. To release:
 
