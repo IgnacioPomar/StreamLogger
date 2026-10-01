@@ -43,6 +43,7 @@ class StreamLoggerConan(ConanFile):
         cmake_layout(self)
         # Editable mode: consumers use the headers straight from the source tree
         self.cpp.source.includedirs = ["include"]
+        self.cpp.build.includedirs = ["include"]    # Generated export header
         self.cpp.build.libdirs = ["."]
 
     def generate(self):
@@ -66,7 +67,5 @@ class StreamLoggerConan(ConanFile):
         self.cpp_info.libs = ["StreamLogger"]
         self.cpp_info.set_property("cmake_file_name", "StreamLogger")
         self.cpp_info.set_property("cmake_target_name", "StreamLogger::StreamLogger")
-        if self.options.shared:
-            self.cpp_info.defines = ["LGGR_DLL"]
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.system_libs = ["pthread"]
