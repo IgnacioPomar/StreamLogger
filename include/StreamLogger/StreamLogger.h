@@ -16,6 +16,7 @@
 #		define LGGR_API
 #	endif
 
+#	include <chrono>
 #	include <exception>
 #	include <optional>
 #	include <sstream>
@@ -45,6 +46,12 @@ namespace IgnacioPomar::Util::StreamLogger
 		LGGR_API void setConsoleLevel (LogLevel logLevel);
 		LGGR_API void setFileLevel (LogLevel logLevel);
 		LGGR_API void setStackLevel (LogLevel logLevel);
+
+		// The log file is flushed after "events" events of that level (0: never by count)...
+		LGGR_API void setFlushEvery (LogLevel logLevel, unsigned int events);
+		// ... or when an event is written and the last flush is older than the interval (0: disabled)
+		LGGR_API void setFlushInterval (std::chrono::milliseconds interval);
+		LGGR_API void flush ();
 	};    // namespace Config
 
 	namespace Internal

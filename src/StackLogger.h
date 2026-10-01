@@ -84,8 +84,8 @@ namespace IgnacioPomar::Util::StreamLogger
 			StackLogger &operator= (StackLogger &&)      = delete;    // no move assignments
 
 			// The *Locked methods must be called with the lock acquired: the subscribers are only queued
-			void sendToConsole (EventContainer &event, bool useTimed);
-			void sendToFile (EventContainer &event, bool useTimed, PendingDispatch &pending);
+			void sendToConsole (const EventContainer &event, const std::string &line);
+			void sendToFile (EventContainer &event, const std::string &line, PendingDispatch &pending);
 			void queueForSubscribers (const EventContainer &event, bool useTimed, PendingDispatch &pending);
 			void processEvent (EventContainer &event, PendingDispatch &pending);
 			void storeAndProcess (LogLevel logLevel, std::string &event, PendingDispatch &pending);
@@ -108,6 +108,7 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			void fillEvent (EventContainer &event, std::string &eventTxt);
 			void fillElapsedTime (EventContainer &event);
+			void flushFile ();
 
 			// Without lock: the definitive check is done in log()
 			bool isEnabled (LogLevel logLevel) const noexcept;

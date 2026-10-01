@@ -4,6 +4,7 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <iostream>
@@ -27,6 +28,12 @@ namespace IgnacioPomar::Util::StreamLogger
 		// > 0 while this thread is inside a subscriber callback: its events are not pushed (avoids loops)
 		thread_local int callbackDepth = 0;
 
+		int levelIndex (LogLevel logLevel)
+		{
+			int lvl = static_cast<int> (logLevel);
+			return (lvl > 5) ? static_cast<int> (LogLevel::FATAL) : lvl;
+		}
+
 		// Same format with any compiler: 2024-04-17 15:28:07.215 UTC
 		std::string formatTimestamp (TimePoint timePoint)
 		{
@@ -49,6 +56,26 @@ namespace IgnacioPomar::Util::StreamLogger
 			std::snprintf (buf, sizeof (buf), "%04d-%02u-%02u", int (ymd.year()), unsigned (ymd.month()),
 			               unsigned (ymd.day()));
 			return buf;
+		}
+
+		// The line written to console and file
+		std::string formatLine (const EventContainer &event, bool useTimed)
+		{
+			const std::string &levelName = getLevelName (event.logLevel);
+			std::string line;
+			line.reserve (event.date.size() + levelName.size() + event.event.size() + event.usedTimeTxt.size() + 16);
+			line += event.date;
+			line += " [";
+			line += levelName;
+			line += "]\t";
+			line += event.event;
+			if (useTimed)
+			{
+				line += "\tDone in: ";
+				line += event.usedTimeTxt;
+			}
+			line += '\n';
+			return line;
 		}
 	}    // namespace
 
@@ -322,26 +349,17 @@ namespace IgnacioPomar::Util::StreamLogger
 		action();
 	}
 
-	void StackLogger::sendToConsole (EventContainer &event, bool useTimed)
+	void StackLogger::sendToConsole (const EventContainer &event, const std::string &line)
 	{
 		if (event.logLevel >= consoleLevel)
 		{
-			int lvl = static_cast<int> (event.logLevel);
-			if (lvl > 5)
-			{
-				lvl = static_cast<int> (LogLevel::FATAL);
-			}
 			if (useColors)
 			{
-				setConsoleColor (levelColors [lvl]);
+				setConsoleColor (levelColors [levelIndex (event.logLevel)]);
 			}
-			std::clog << event.date << " [" << getLevelName (event.logLevel) << "]\t";
-			std::clog << event.event;
-			if (useTimed)
-			{
-				std::clog << "\tDone in: " << event.usedTimeTxt;
-			}
-			std::clog << std::endl;
+			// A single write per line
+			std::clog.write (line.data(), static_cast<std::streamsize> (line.size()));
+			std::clog.flush();
 			if (useColors)
 			{
 				resetConsoleColor();
@@ -349,7 +367,7 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
-	void StackLogger::sendToFile (EventContainer &event, bool useTimed, PendingDispatch &pending)
+	void StackLogger::sendToFile (EventContainer &event, const std::string &line, PendingDispatch &pending)
 	{
 		if (event.logLevel >= fileLevel)
 		{
@@ -400,15 +418,30 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			if (logfile.is_open())
 			{
-				this->logfile << event.date << " [" << getLevelName (event.logLevel) << "]\t";
-				this->logfile << event.event;
-				if (useTimed)
+				this->logfile.write (line.data(), static_cast<std::streamsize> (line.size()));
+
+				// Flush policy: by number of events of the level, or by time
+				int lvl  = levelIndex (event.logLevel);
+				auto now = std::chrono::system_clock::now();
+				++this->pendingFlush [lvl];
+				bool byCount = flushEvery [lvl] != 0 && pendingFlush [lvl] >= flushEvery [lvl];
+				bool byTime  = flushInterval.count() > 0 && now - lastFlush >= flushInterval;
+				if (byCount || byTime)
 				{
-					this->logfile << "\tDone in: " << event.usedTimeTxt;
+					this->flushFile();
 				}
-				this->logfile << std::endl;    // A service may die without closing the file
 			}
 		}
+	}
+
+	void StackLogger::flushFile()
+	{
+		if (logfile.is_open())
+		{
+			this->logfile.flush();
+		}
+		std::fill (std::begin (pendingFlush), std::end (pendingFlush), 0u);
+		this->lastFlush = std::chrono::system_clock::now();
 	}
 
 	void StackLogger::queueForSubscribers (const EventContainer &event, bool useTimed, PendingDispatch &pending)
@@ -516,8 +549,13 @@ namespace IgnacioPomar::Util::StreamLogger
 		// Only with finished Event timed events
 		bool useTimed = EVENT_TYPE_TIMED_FINISHED == event.eventType;
 
-		this->sendToConsole (event, useTimed);
-		this->sendToFile (event, useTimed, pending);
+		// Formatted once for console and file
+		if (event.logLevel >= consoleLevel || event.logLevel >= fileLevel)
+		{
+			std::string line = formatLine (event, useTimed);
+			this->sendToConsole (event, line);
+			this->sendToFile (event, line, pending);
+		}
 		this->queueForSubscribers (event, useTimed, pending);
 	}
 

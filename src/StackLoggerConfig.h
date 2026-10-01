@@ -38,6 +38,9 @@ namespace IgnacioPomar::Util::StreamLogger
 			void setFileLevel (LogLevel logLevel);
 			void setStackLevel (LogLevel logLevel);
 
+			void setFlushEvery (LogLevel logLevel, unsigned int events);
+			void setFlushInterval (std::chrono::milliseconds interval);
+
 			void resetSubscriberLevel ();
 			void addSubscriberLevel (LogLevel logLevel);
 
@@ -70,6 +73,12 @@ namespace IgnacioPomar::Util::StreamLogger
 			std::string logFilename;
 			std::string logFilePattern;
 			bool hasRotation;
+
+			// Flush policy of the log file (see DEFAULTS::FLUSH_EVERY)
+			unsigned int flushEvery [6];
+			unsigned int pendingFlush [6];    // Events written since the last flush
+			std::chrono::milliseconds flushInterval;
+			TimePoint lastFlush;
 	};
 }    // namespace IgnacioPomar::Util::StreamLogger
 
