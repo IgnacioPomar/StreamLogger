@@ -9,9 +9,11 @@
 #	define STACKLOGGER_H
 
 #	include <list>
+#	include <memory>
 #	include <string>
 #	include <fstream>
 #	include <chrono>
+#	include <vector>
 
 #	include <functional>
 #	include <mutex>
@@ -23,13 +25,43 @@
 
 namespace IgnacioPomar::Util::StreamLogger
 {
+	class StackLogger;
 
-	class EventSubscriber
+	/**
+	 * A push subscriber. Shared between the logger and the Subscription, so it survives
+	 * while a callback is being dispatched outside the logger lock
+	 */
+	class SubscriberSlot
 	{
 		public:
-			EventSubscriber (LogEventsSubscriber &subscriber, const LogLevel logLevel);
+			SubscriberSlot (StackLogger &owner, LogEventsSubscriber &subscriber, const LogLevel logLevel);
+
+			StackLogger *owner;    // nullptr once the logger is destroyed
 			LogEventsSubscriber &subscriber;
 			const LogLevel logLevel;
+
+			// Held while calling the subscriber: recursive, so the subscriber can unsubscribe inside its callback
+			std::recursive_mutex callMtx;
+			bool active = true;    // Protected by callMtx
+
+			// Waits for a running callback, and avoids new ones
+			void deactivate ();
+	};
+
+	using SubscriberList = std::vector<std::shared_ptr<SubscriberSlot>>;
+
+	// Copy of an event to send to the subscribers after releasing the logger lock
+	struct PushEvent
+	{
+			std::string date;
+			std::string txt;
+			LogLevel logLevel;
+	};
+
+	struct PendingDispatch
+	{
+			std::shared_ptr<const SubscriberList> subscribers;
+			std::vector<PushEvent> events;
 	};
 
 	/**
@@ -39,7 +71,9 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		private:
 			std::list<EventContainer> events;
-			std::list<EventSubscriber> subscribers;
+
+			// Copy on write: the dispatch uses a snapshot, without the lock
+			std::shared_ptr<const SubscriberList> subscribers;
 
 			std::ofstream logfile;
 
@@ -49,43 +83,54 @@ namespace IgnacioPomar::Util::StreamLogger
 			StackLogger (StackLogger &&)                 = delete;    // no move constructor
 			StackLogger &operator= (StackLogger &&)      = delete;    // no move assignments
 
+			// The *Locked methods must be called with the lock acquired: the subscribers are only queued
 			void sendToConsole (EventContainer &event, bool useTimed);
-			void sendToFile (EventContainer &event, bool useTimed);
-			void sendToSubscribers (EventContainer &event, bool useTimed);
+			void sendToFile (EventContainer &event, bool useTimed, PendingDispatch &pending);
+			void queueForSubscribers (const EventContainer &event, bool useTimed, PendingDispatch &pending);
+			void processEvent (EventContainer &event, PendingDispatch &pending);
+			void storeAndProcess (LogLevel logLevel, std::string &event, PendingDispatch &pending);
+			void addSubscriber (const std::shared_ptr<SubscriberSlot> &slot);
+			void removeSubscribers (const std::function<bool (const SubscriberSlot &)> &matches,
+			                        SubscriberList &removed);
 
-			void storeAndProcess (LogLevel logLevel, std::string &event);
+			// Called without the lock
+			static void dispatch (PendingDispatch &pending);
 
 		protected:
-			void cleanExcedentEvents ();
+			void cleanExcedentEvents () override;
+
+			// The MT safe version returns a locked mutex
+			virtual std::unique_lock<std::mutex> acquire ();
 
 		public:
 			StackLogger();
-			~StackLogger();
+			virtual ~StackLogger();
 
 			void fillEvent (EventContainer &event, std::string &eventTxt);
 			void fillElapsedTime (EventContainer &event);
-			void processEvent (EventContainer &event);
 
 			// Without lock: the definitive check is done in log()
 			bool isEnabled (LogLevel logLevel) const noexcept;
 
 			// void delLogsOltherThan (int maxLogFileDays);
 
-			// The virtual methods are the entry points: the MT safe version locks them
-			virtual void log (LogLevel logLevel, std::string &event);
-			virtual void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
-			virtual void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
-			virtual void unsubscribePushEvents (LogEventsSubscriber &receiver);
+			// Entry points: they lock (in the MT safe version), and call the subscribers after unlocking
+			void log (LogLevel logLevel, std::string &event);
+			void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
+			Subscription subscribe (LogEventsSubscriber &receiver, LogLevel logLevel);
+			void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
+			void unsubscribePushEvents (LogEventsSubscriber &receiver);
+			void unsubscribe (const std::shared_ptr<SubscriberSlot> &slot) noexcept;
 
 			// The event is marked as running before releasing the lock: it can not be removed from the stack
-			virtual EventContainer *emplaceTimedEvent (LogLevel logLevel);
-			virtual void startTimedEvent (EventContainer &event, std::string &eventTxt);
-			virtual void appendToTimedEvent (EventContainer &event, const std::string &eventTxt);
-			virtual void finishTimedEvent (EventContainer &event);
-			virtual void discardTimedEvent (EventContainer &event);    // Never started: it is removed
+			EventContainer *emplaceTimedEvent (LogLevel logLevel);
+			void startTimedEvent (EventContainer &event, std::string &eventTxt);
+			void appendToTimedEvent (EventContainer &event, const std::string &eventTxt);
+			void finishTimedEvent (EventContainer &event);
+			void discardTimedEvent (EventContainer &event);    // Never started: it is removed
 
 			// Used to change the configuration
-			virtual void runLocked (const std::function<void()> &action);
+			void runLocked (const std::function<void()> &action);
 	};
 
 	class StackLoggerMTSafe : public StackLogger
@@ -99,26 +144,12 @@ namespace IgnacioPomar::Util::StreamLogger
 			StackLoggerMTSafe (StackLoggerMTSafe &&)                 = delete;    // no move constructor
 			StackLoggerMTSafe &operator= (StackLoggerMTSafe &&)      = delete;    // no move assignments
 
+		protected:
+			std::unique_lock<std::mutex> acquire () override;
+
 		public:
 			// Wee need the constructor to be public, as this class is a singleton
 			StackLoggerMTSafe();
-
-			// Dont need to override destructor: we dont need mutex as this calss is a singelton, and we will use the
-			// base class destructor
-			//~StackLoggerMTSafe();
-
-			void log (LogLevel logLevel, std::string &event) override;
-			void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
-			void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
-			void unsubscribePushEvents (LogEventsSubscriber &receiver) override;
-
-			EventContainer *emplaceTimedEvent (LogLevel logLevel) override;
-			void startTimedEvent (EventContainer &event, std::string &eventTxt) override;
-			void appendToTimedEvent (EventContainer &event, const std::string &eventTxt) override;
-			void finishTimedEvent (EventContainer &event) override;
-			void discardTimedEvent (EventContainer &event) override;
-
-			void runLocked (const std::function<void()> &action) override;
 	};
 
 	StackLogger &getLogger ();

@@ -5,6 +5,8 @@
  ********************************************************************************************/
 
 #include <atomic>
+#include <chrono>
+#include <future>
 #include <stdexcept>
 #include <thread>
 
@@ -30,7 +32,7 @@ namespace
 	class FakeLogger : public lggr::BaseStreamLogger
 	{
 		public:
-			bool enabled    = true;
+			bool enabled   = true;
 			bool throwInLog = false;
 			std::vector<std::string> logged;
 
@@ -86,6 +88,13 @@ TEST_CASE ("An empty message is not logged", "[filter]")
 	CHECK (logger.logged.empty());
 }
 
+TEST_CASE ("An exception while logging does not escape the builder destructor", "[filter]")
+{
+	FakeLogger logger;
+	logger.throwInLog = true;
+	CHECK_NOTHROW (logger << "Lost");
+}
+
 TEST_CASE ("isEnabled follows the configuration", "[filter]")
 {
 	lggr::StackLogger logger;
@@ -95,10 +104,11 @@ TEST_CASE ("isEnabled follows the configuration", "[filter]")
 	CHECK (logger.isEnabled (lggr::LL::WARN));
 
 	CollectingSubscriber collector;
-	logger.subscribePushEvents (collector, lggr::LL::DEBUG);
-	CHECK (logger.isEnabled (lggr::LL::DEBUG));
-	CHECK_FALSE (logger.isEnabled (lggr::LL::TRACE));
-	logger.unsubscribePushEvents (collector);
+	{
+		auto subscription = logger.subscribe (collector, lggr::LL::DEBUG);
+		CHECK (logger.isEnabled (lggr::LL::DEBUG));
+		CHECK_FALSE (logger.isEnabled (lggr::LL::TRACE));
+	}
 	CHECK_FALSE (logger.isEnabled (lggr::LL::DEBUG));
 }
 
@@ -110,7 +120,7 @@ TEST_CASE ("The static loggers know if they are enabled", "[filter]")
 	CHECK (lggr::info.isEnabled());
 
 	CollectingSubscriber collector;
-	ScopedPushSubscription subscription (collector, lggr::LL::TRACE);
+	auto subscription = lggr::subscribe (collector, lggr::LL::TRACE);
 	CHECK (lggr::trace.isEnabled());
 }
 
@@ -169,7 +179,7 @@ TEST_CASE ("Timed events survive a small stack with concurrent logs", "[timed][m
 
 	CollectingSubscriber collector;
 	{
-		ScopedPushSubscription subscription (collector, lggr::LL::WARN);
+		auto subscription = lggr::subscribe (collector, lggr::LL::WARN);
 		for (int i = 0; i < ITERATIONS; i++)
 		{
 			auto timedEvt = lggr::warn.startTimedEvent();
@@ -190,13 +200,222 @@ TEST_CASE ("Timed events survive a small stack with concurrent logs", "[timed][m
 	lggr::Config::setStackSize (lggr::DEFAULTS::STACK_SIZE);
 }
 
-//-------------- Errors ----------------
+//-------------- Subscribers ----------------
 
-TEST_CASE ("An exception while logging does not escape the builder destructor", "[errors]")
+TEST_CASE ("A destroyed subscription receives nothing", "[subscribers]")
 {
-	FakeLogger logger;
-	logger.throwInLog = true;
-	CHECK_NOTHROW (logger << "Lost");
+	lggr::StackLogger logger;
+	silence (logger);
+	CollectingSubscriber collector;
+	{
+		auto subscription = logger.subscribe (collector, lggr::LL::INFO);
+		CHECK (subscription);
+		log (logger, lggr::LL::INFO, "Received");
+	}
+	log (logger, lggr::LL::INFO, "Not received");
+	CHECK (collector.texts() == std::vector<std::string> {"Received"});
+	CHECK (logger.subscriberLevel == lggr::LL::OFF);
+}
+
+TEST_CASE ("A subscription can be moved and reset", "[subscribers]")
+{
+	lggr::StackLogger logger;
+	silence (logger);
+	CollectingSubscriber collector;
+
+	lggr::Subscription outer;
+	CHECK_FALSE (outer);
+	{
+		auto inner = logger.subscribe (collector, lggr::LL::INFO);
+		outer      = std::move (inner);
+	}
+	log (logger, lggr::LL::INFO, "Received");
+	outer.reset();
+	CHECK_FALSE (outer);
+	log (logger, lggr::LL::INFO, "Not received");
+	CHECK (collector.texts() == std::vector<std::string> {"Received"});
+}
+
+TEST_CASE ("A subscription can outlive its logger", "[subscribers]")
+{
+	CollectingSubscriber collector;
+	lggr::Subscription subscription;
+	{
+		lggr::StackLogger logger;
+		silence (logger);
+		subscription = logger.subscribe (collector, lggr::LL::INFO);
+	}
+	subscription.reset();    // Must not touch the destroyed logger
+	CHECK_FALSE (subscription);
+}
+
+namespace
+{
+	// Blocks in the callback until released
+	class BlockingSubscriber : public lggr::LogEventsSubscriber
+	{
+		public:
+			std::promise<void> entered;
+			std::shared_future<void> release;
+			std::atomic<int> calls {0};
+			std::atomic<bool> finished {false};
+
+			void onLogEvent (const std::string &, const std::string, const lggr::LogLevel) override
+			{
+				if (calls++ == 0)
+				{
+					entered.set_value();
+					release.wait();
+				}
+				finished = true;
+			}
+	};
+}    // namespace
+
+TEST_CASE ("Destroying a subscription waits for the running callback", "[subscribers][multithread]")
+{
+	lggr::StackLoggerMTSafe logger;
+	silence (logger);
+
+	std::promise<void> release;
+	BlockingSubscriber subscriber;
+	subscriber.release = release.get_future().share();
+
+	auto subscription = std::make_unique<lggr::Subscription> (logger.subscribe (subscriber, lggr::LL::WARN));
+
+	std::thread producer ([&logger] { log (logger, lggr::LL::WARN, "Blocking"); });
+	subscriber.entered.get_future().wait();
+
+	// The logger is not locked while the callback runs: other events are processed
+	log (logger, lggr::LL::INFO, "Not for the subscriber");
+	CHECK (pullTexts (logger, lggr::LL::TRACE).size() == 2);
+
+	std::atomic<bool> unsubscribed {false};
+	std::thread unsubscriber ([&] {
+		subscription.reset();    // Destroys the Subscription
+		unsubscribed = true;
+	});
+
+	std::this_thread::sleep_for (std::chrono::milliseconds (50));
+	CHECK_FALSE (unsubscribed);    // Waiting for the callback
+
+	release.set_value();
+	unsubscriber.join();
+	producer.join();
+	CHECK (unsubscribed);
+	CHECK (subscriber.finished);
+
+	log (logger, lggr::LL::WARN, "After unsubscribing");
+	CHECK (subscriber.calls == 1);
+}
+
+namespace
+{
+	// Logs inside the callback
+	class EchoSubscriber : public lggr::LogEventsSubscriber
+	{
+		public:
+			lggr::StackLogger *logger = nullptr;
+			std::vector<std::string> received;
+
+			void onLogEvent (const std::string &, const std::string logTxt, const lggr::LogLevel) override
+			{
+				received.push_back (logTxt);
+				std::string echo = "Echo: " + logTxt;
+				logger->log (lggr::LL::INFO, echo);
+			}
+	};
+}    // namespace
+
+TEST_CASE ("A subscriber can log without deadlock, and its events are not pushed", "[subscribers][multithread]")
+{
+	lggr::StackLoggerMTSafe logger;
+	silence (logger);
+	EchoSubscriber echo;
+	echo.logger       = &logger;
+	auto subscription = logger.subscribe (echo, lggr::LL::INFO);
+
+	log (logger, lggr::LL::INFO, "Original");
+
+	CHECK (echo.received == std::vector<std::string> {"Original"});
+	CHECK (pullTexts (logger, lggr::LL::TRACE) == std::vector<std::string> {"Original", "Echo: Original"});
+}
+
+namespace
+{
+	class ThrowingSubscriber : public lggr::LogEventsSubscriber
+	{
+		public:
+			void onLogEvent (const std::string &, const std::string, const lggr::LogLevel) override
+			{
+				throw std::runtime_error ("Expected test exception");
+			}
+	};
+
+	// Unsubscribes itself in the first callback
+	class SelfUnsubscriber : public lggr::LogEventsSubscriber
+	{
+		public:
+			lggr::Subscription subscription;
+			int calls = 0;
+
+			void onLogEvent (const std::string &, const std::string, const lggr::LogLevel) override
+			{
+				++calls;
+				subscription.reset();
+			}
+	};
+}    // namespace
+
+TEST_CASE ("An exception in a subscriber does not affect the others", "[subscribers]")
+{
+	lggr::StackLogger logger;
+	silence (logger);
+	ThrowingSubscriber thrower;
+	CollectingSubscriber collector;
+	auto subThrower   = logger.subscribe (thrower, lggr::LL::INFO);
+	auto subCollector = logger.subscribe (collector, lggr::LL::INFO);
+
+	CHECK_NOTHROW (log (logger, lggr::LL::INFO, "Event"));
+	CHECK (collector.texts() == std::vector<std::string> {"Event"});
+}
+
+TEST_CASE ("A subscriber can unsubscribe inside its callback", "[subscribers]")
+{
+	lggr::StackLoggerMTSafe logger;
+	silence (logger);
+	SelfUnsubscriber subscriber;
+	subscriber.subscription = logger.subscribe (subscriber, lggr::LL::INFO);
+
+	log (logger, lggr::LL::INFO, "First");
+	log (logger, lggr::LL::INFO, "Second");
+	CHECK (subscriber.calls == 1);
+	CHECK (logger.subscriberLevel == lggr::LL::OFF);
+}
+
+TEST_CASE ("The deprecated push interface still works", "[subscribers]")
+{
+	lggr::Config::setConsoleLevel (lggr::LL::OFF);
+	CollectingSubscriber collector;
+
+#if defined(__GNUC__)
+#	pragma GCC diagnostic push
+#	pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#	pragma warning(push)
+#	pragma warning(disable : 4996)
+#endif
+	lggr::subscribePushEvents (collector, lggr::LL::FATAL);
+	lggr::fatal << "Deprecated fatal";
+	lggr::unsubscribePushEvents (collector);
+#if defined(__GNUC__)
+#	pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#	pragma warning(pop)
+#endif
+
+	lggr::fatal << "Not received";
+	CHECK (collector.texts() == std::vector<std::string> {"Deprecated fatal"});
 }
 
 //-------------- Date format ----------------
@@ -205,10 +424,10 @@ TEST_CASE ("The date has the same format with any compiler", "[date]")
 {
 	lggr::StackLogger logger;
 	silence (logger);
+	CollectingSubscriber collector;
+	auto subscription = logger.subscribe (collector, lggr::LL::INFO);
 	log (logger, lggr::LL::INFO, "Event");
 
-	CollectingSubscriber collector;
-	logger.sendEvents (collector, lggr::LL::INFO);
 	REQUIRE (collector.events.size() == 1);
 	CHECK_THAT (collector.events [0].date, Matches (R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} UTC)"));
 }

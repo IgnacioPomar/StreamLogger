@@ -48,6 +48,11 @@ namespace IgnacioPomar::Util::StreamLogger
 		getLogger().sendEvents (subscriber, logLevel);
 	}
 
+	Subscription subscribe (LogEventsSubscriber &subscriber, const LogLevel logLevel)
+	{
+		return getLogger().subscribe (subscriber, logLevel);
+	}
+
 	void subscribePushEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel)
 	{
 		getLogger().subscribePushEvents (subscriber, logLevel);

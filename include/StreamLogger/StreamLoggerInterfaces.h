@@ -14,6 +14,7 @@
 #		define LGGR_API
 #	endif
 
+#	include <memory>
 #	include <string>
 
 #	include "StreamLoggerConsts.h"
@@ -32,10 +33,45 @@ namespace IgnacioPomar::Util::StreamLogger
 			virtual void onLogEvent (const std::string &date, const std::string logTxt, const LogLevel logLevel) = 0;
 	};
 
+	class SubscriberSlot;
+
+	/**
+	 * RAII push subscription: on destruction (or reset) it unsubscribes, waiting for a running callback to finish.
+	 * Once it is destroyed, the subscriber will not be called again, so the subscriber can be safely destroyed.
+	 * If it is a member of the subscriber itself, declare it the last one: it must be destroyed first.
+	 *
+	 * The callbacks are called without the logger locked, so they can log, but:
+	 *  - The events logged inside a callback are not pushed to the subscribers (avoids infinite loops)
+	 *  - A subscriber is never called concurrently, but the events of different threads may arrive in a different
+	 *    order than the one in the stack
+	 *  - An exception thrown by a callback is reported in stderr, and ignored
+	 */
+	class LGGR_API Subscription
+	{
+		public:
+			Subscription() noexcept = default;
+			explicit Subscription (std::shared_ptr<SubscriberSlot> slot) noexcept;
+			Subscription (Subscription &&other) noexcept;
+			Subscription &operator= (Subscription &&other) noexcept;
+			Subscription (const Subscription &)            = delete;
+			Subscription &operator= (const Subscription &) = delete;
+			~Subscription();
+
+			void reset () noexcept;
+			explicit operator bool () const noexcept;
+
+		private:
+			std::shared_ptr<SubscriberSlot> slot;
+	};
+
 	LGGR_API void pullLogEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel);
-	LGGR_API void subscribePushEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel);
+	[[nodiscard]] LGGR_API Subscription subscribe (LogEventsSubscriber &subscriber, const LogLevel logLevel);
+
+	[[deprecated ("Use subscribe(): the Subscription unsubscribes on destruction")]] LGGR_API void subscribePushEvents (
+	    LogEventsSubscriber &subscriber, const LogLevel logLevel);
 	// Must be called before the subscriber is destroyed
-	LGGR_API void unsubscribePushEvents (LogEventsSubscriber &subscriber);
+	[[deprecated ("Use subscribe(): the Subscription unsubscribes on destruction")]] LGGR_API void
+	    unsubscribePushEvents (LogEventsSubscriber &subscriber);
 
 }    // namespace IgnacioPomar::Util::StreamLogger
 #endif    // __STREAM_LOGGER_INTERFACES_H

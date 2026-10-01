@@ -18,7 +18,7 @@ TEST_CASE ("The MT safe logger does not lose events", "[multithread]")
 	logger.setStackSize (THREADS * EVENTS);
 
 	CollectingSubscriber pushed;
-	logger.subscribePushEvents (pushed, lggr::LL::INFO);
+	auto subscription = logger.subscribe (pushed, lggr::LL::INFO);
 
 	std::vector<std::thread> threads;
 	for (int t = 0; t < THREADS; t++)

@@ -70,7 +70,7 @@ All the configuration is in `lggr::Config`. The default values are in `StreamLog
 - **Console**: the output goes to `std::clog` (stderr), from `INFO`. The colors (`Config::setColorMode`) are `AUTO` by default: only if stderr is a terminal and the [`NO_COLOR`](https://no-color.org) environment variable is not set, so journald or Docker do not get ANSI sequences.
 - **File**: disabled by default. Enable it with `Config::setFileLevel`. The file name (`Config::setOutFile`) rotates each day if it has a `%d` (UTC date); the default is `%d_StreamedLog.log`. The path (`Config::setOutPath`) is the working directory by default. If the file can not be opened, the file output is disabled and an `ERROR` event is generated.
 - **Stack**: the last 1000 events from `INFO` are kept in memory, to be pulled with `pullLogEvents`.
-- **Push subscribers**: `subscribePushEvents` / `unsubscribePushEvents`. A subscriber must unsubscribe before being destroyed. The subscribers are called with the logger locked: they must not log.
+- **Push subscribers**: `auto subscription = lggr::subscribe (subscriber, level);`. The `Subscription` unsubscribes on destruction, waiting for a running callback, so after that the subscriber can be destroyed safely (if the `Subscription` is a member of the subscriber, declare it the last one). The callbacks are called without the logger locked: they can log, but those events are not pushed to the subscribers. A subscriber is never called concurrently, but it can be called from any thread, and the events of different threads may arrive in a different order than in the stack. A slow subscriber only delays the threads that log events for it. An exception thrown by a callback is reported in stderr and ignored. `subscribePushEvents` / `unsubscribePushEvents` are deprecated.
 - **Date**: always `YYYY-MM-DD HH:MM:SS.mmm UTC`, with any compiler.
 - **Errors**: the errors while logging inside a destructor (the message builder, a timed event) never escape: they are reported in stderr.
 
@@ -122,7 +122,7 @@ int main ()
 	lggr::Config::setMultiThreadSafe (true);    // Already the default
 
 	PushEventHandler pushHandler;
-	lggr::subscribePushEvents (pushHandler, lggr::LL::FATAL);
+	auto pushSubscription = lggr::subscribe (pushHandler, lggr::LL::FATAL);    // Unsubscribes on destruction
 
 	// Default values in StreamLogger::DEFAULTS, defined in StreamLoggerConsts.h
 	lggr::Config::setStackLevel (lggr::LogLevel::INFO);
@@ -172,8 +172,6 @@ int main ()
 	// Show events.... again (except the last one)
 	EventReprinter reprinter;
 	lggr::pullLogEvents (reprinter, lggr::LL::INFO);
-
-	lggr::unsubscribePushEvents (pushHandler);
 
 	return 0;
 }

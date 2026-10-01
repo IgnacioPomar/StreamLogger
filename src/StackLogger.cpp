@@ -10,6 +10,7 @@
 
 #include <filesystem>
 
+#include "StreamLogger/StreamLogger.h"
 #include "StreamLogger/StreamLoggerConsts.h"
 
 #include "LoggerConsoleUtils.h"
@@ -23,6 +24,9 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	namespace
 	{
+		// > 0 while this thread is inside a subscriber callback: its events are not pushed (avoids loops)
+		thread_local int callbackDepth = 0;
+
 		// Same format with any compiler: 2024-04-17 15:28:07.215 UTC
 		std::string formatTimestamp (TimePoint timePoint)
 		{
@@ -48,15 +52,90 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}    // namespace
 
-	StackLogger::StackLogger() {}
+	//-------------- SubscriberSlot / Subscription ----------------
+
+	SubscriberSlot::SubscriberSlot (StackLogger &owner, LogEventsSubscriber &subscriber, const LogLevel logLevel)
+	    : owner (&owner)
+	    , subscriber (subscriber)
+	    , logLevel (logLevel)
+	{
+	}
+
+	void SubscriberSlot::deactivate()
+	{
+		std::lock_guard<std::recursive_mutex> lock (this->callMtx);
+		this->active = false;
+	}
+
+	Subscription::Subscription (std::shared_ptr<SubscriberSlot> slot) noexcept
+	    : slot (std::move (slot))
+	{
+	}
+
+	Subscription::Subscription (Subscription &&other) noexcept = default;
+
+	Subscription &Subscription::operator= (Subscription &&other) noexcept
+	{
+		if (this != &other)
+		{
+			this->reset();
+			this->slot = std::move (other.slot);
+		}
+		return *this;
+	}
+
+	Subscription::~Subscription()
+	{
+		this->reset();
+	}
+
+	void Subscription::reset() noexcept
+	{
+		if (!this->slot)
+		{
+			return;
+		}
+		std::shared_ptr<SubscriberSlot> oldSlot = std::move (this->slot);
+		if (oldSlot->owner != nullptr)
+		{
+			oldSlot->owner->unsubscribe (oldSlot);
+		}
+		else
+		{
+			oldSlot->deactivate();
+		}
+	}
+
+	Subscription::operator bool() const noexcept
+	{
+		return static_cast<bool> (this->slot);
+	}
+
+	//-------------- StackLogger ----------------
+
+	StackLogger::StackLogger()
+	    : subscribers (std::make_shared<const SubscriberList>())
+	{
+	}
 
 	StackLogger::~StackLogger()
 	{
+		// The remaining Subscriptions must not use this logger
+		for (auto &slot : *this->subscribers)
+		{
+			slot->owner = nullptr;
+		}
+
 		if (logfile.is_open())
 		{
 			this->logfile.flush();
 			this->logfile.close();
 		}
+	}
+
+	std::unique_lock<std::mutex> StackLogger::acquire()
+	{
+		return {};
 	}
 
 	bool StackLogger::isEnabled (LogLevel logLevel) const noexcept
@@ -66,62 +145,137 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	void StackLogger::sendEvents (LogEventsSubscriber &subscriber, LogLevel logLevel)
 	{
-		for (auto &event : events)
+		// Copy, to call the subscriber without the lock
+		std::vector<PushEvent> copy;
 		{
-			// A timed event not yet started has no data
-			if (event.logLevel >= logLevel && !event.date.empty())
+			auto lock = this->acquire();
+			for (auto &event : events)
 			{
-				subscriber.onLogEvent (event.date, event.event, event.logLevel);
+				// A timed event not yet started has no data
+				if (event.logLevel >= logLevel && !event.date.empty())
+				{
+					copy.push_back ({event.date, event.event, event.logLevel});
+				}
 			}
 		}
+
+		for (auto &event : copy)
+		{
+			subscriber.onLogEvent (event.date, std::move (event.txt), event.logLevel);
+		}
+	}
+
+	Subscription StackLogger::subscribe (LogEventsSubscriber &receiver, LogLevel logLevel)
+	{
+		auto slot = std::make_shared<SubscriberSlot> (*this, receiver, logLevel);
+		{
+			auto lock = this->acquire();
+			this->addSubscriber (slot);
+		}
+		return Subscription (slot);
 	}
 
 	void StackLogger::subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel)
 	{
-		subscribers.emplace_back (receiver, logLevel);
-		this->addSubscriberLevel (logLevel);
+		auto slot = std::make_shared<SubscriberSlot> (*this, receiver, logLevel);
+		auto lock = this->acquire();
+		this->addSubscriber (slot);
 	}
 
 	void StackLogger::unsubscribePushEvents (LogEventsSubscriber &receiver)
 	{
-		subscribers.remove_if ([&receiver] (const EventSubscriber &s) { return &s.subscriber == &receiver; });
+		SubscriberList removed;
+		{
+			auto lock = this->acquire();
+			this->removeSubscribers ([&receiver] (const SubscriberSlot &s) { return &s.subscriber == &receiver; },
+			                         removed);
+		}
+
+		// Without the logger lock: a running callback may be logging
+		for (auto &slot : removed)
+		{
+			slot->deactivate();
+		}
+	}
+
+	void StackLogger::unsubscribe (const std::shared_ptr<SubscriberSlot> &slot) noexcept
+	{
+		// First, without the logger lock: wait for a running callback (it may be logging)
+		slot->deactivate();
+
+		try
+		{
+			SubscriberList removed;
+			auto lock = this->acquire();
+			this->removeSubscribers ([&slot] (const SubscriberSlot &s) { return &s == slot.get(); }, removed);
+		}
+		catch (const std::exception &e)
+		{
+			// The slot is already inactive: it is only a leak
+			Internal::reportError (e.what());
+		}
+	}
+
+	void StackLogger::addSubscriber (const std::shared_ptr<SubscriberSlot> &slot)
+	{
+		auto newList = std::make_shared<SubscriberList> (*this->subscribers);
+		newList->push_back (slot);
+		this->subscribers = std::move (newList);
+		this->addSubscriberLevel (slot->logLevel);
+	}
+
+	void StackLogger::removeSubscribers (const std::function<bool (const SubscriberSlot &)> &matches,
+	                                     SubscriberList &removed)
+	{
+		auto newList = std::make_shared<SubscriberList>();
+		for (auto &slot : *this->subscribers)
+		{
+			(matches (*slot) ? removed : *newList).push_back (slot);
+		}
+		this->subscribers = std::move (newList);
 
 		this->resetSubscriberLevel();
-		for (auto &subscriber : subscribers)
+		for (auto &slot : *this->subscribers)
 		{
-			this->addSubscriberLevel (subscriber.logLevel);
+			this->addSubscriberLevel (slot->logLevel);
 		}
 	}
 
 	void StackLogger::log (LogLevel logLevel, std::string &event)
 	{
-		if (logLevel < this->effectiveLevel)
+		PendingDispatch pending;
 		{
-			return;
-		}
+			auto lock = this->acquire();
+			if (logLevel < this->effectiveLevel)
+			{
+				return;
+			}
 
-		this->storeAndProcess (logLevel, event);
-		this->cleanExcedentEvents();
+			this->storeAndProcess (logLevel, event, pending);
+			this->cleanExcedentEvents();
+		}
+		dispatch (pending);
 	}
 
-	void StackLogger::storeAndProcess (LogLevel logLevel, std::string &event)
+	void StackLogger::storeAndProcess (LogLevel logLevel, std::string &event, PendingDispatch &pending)
 	{
 		if (maxStoredEvents > 0 && logLevel >= stackLevel)
 		{
 			EventContainer &newEvent = this->events.emplace_back (logLevel);
 			fillEvent (newEvent, event);
-			this->processEvent (newEvent);
+			this->processEvent (newEvent, pending);
 		}
 		else
 		{
 			EventContainer tmpEvent (logLevel);
 			fillEvent (tmpEvent, event);
-			this->processEvent (tmpEvent);
+			this->processEvent (tmpEvent, pending);
 		}
 	}
 
 	EventContainer *StackLogger::emplaceTimedEvent (LogLevel logLevel)
 	{
+		auto lock                = this->acquire();
 		EventContainer &newEvent = events.emplace_back (logLevel);
 		newEvent.eventType       = EVENT_TYPE_TIMED_RUNNING;
 		return &newEvent;
@@ -129,29 +283,42 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	void StackLogger::startTimedEvent (EventContainer &event, std::string &eventTxt)
 	{
-		this->fillEvent (event, eventTxt);
-		this->processEvent (event);
+		PendingDispatch pending;
+		{
+			auto lock = this->acquire();
+			this->fillEvent (event, eventTxt);
+			this->processEvent (event, pending);
+		}
+		dispatch (pending);
 	}
 
 	void StackLogger::appendToTimedEvent (EventContainer &event, const std::string &eventTxt)
 	{
+		auto lock = this->acquire();
 		event.event += eventTxt;
 	}
 
 	void StackLogger::finishTimedEvent (EventContainer &event)
 	{
-		this->fillElapsedTime (event);
-		this->processEvent (event);
-		this->cleanExcedentEvents();
+		PendingDispatch pending;
+		{
+			auto lock = this->acquire();
+			this->fillElapsedTime (event);
+			this->processEvent (event, pending);
+			this->cleanExcedentEvents();
+		}
+		dispatch (pending);
 	}
 
 	void StackLogger::discardTimedEvent (EventContainer &event)
 	{
+		auto lock = this->acquire();
 		this->events.remove_if ([&event] (const EventContainer &e) { return &e == &event; });
 	}
 
 	void StackLogger::runLocked (const std::function<void()> &action)
 	{
+		auto lock = this->acquire();
 		action();
 	}
 
@@ -182,7 +349,7 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
-	void StackLogger::sendToFile (EventContainer &event, bool useTimed)
+	void StackLogger::sendToFile (EventContainer &event, bool useTimed, PendingDispatch &pending)
 	{
 		if (event.logLevel >= fileLevel)
 		{
@@ -227,7 +394,7 @@ namespace IgnacioPomar::Util::StreamLogger
 					// Not with log(): we are inside it (and, in the MT safe logger, with the mutex locked)
 					std::string msg ("Unable to open log file: ");
 					msg += filePath.string();
-					this->storeAndProcess (LL::ERROR, msg);
+					this->storeAndProcess (LL::ERROR, msg, pending);
 				}
 			}
 
@@ -244,34 +411,65 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
-	void StackLogger::sendToSubscribers (EventContainer &event, bool useTimed)
+	void StackLogger::queueForSubscribers (const EventContainer &event, bool useTimed, PendingDispatch &pending)
+	{
+		if (event.logLevel < this->subscriberLevel || callbackDepth > 0)
+		{
+			return;
+		}
+		if (!pending.subscribers)
+		{
+			pending.subscribers = this->subscribers;
+		}
+		if (useTimed)
+		{
+			pending.events.push_back ({event.date, event.event + "\tDone in: " + event.usedTimeTxt, event.logLevel});
+		}
+		else
+		{
+			pending.events.push_back ({event.date, event.event, event.logLevel});
+		}
+	}
+
+	void StackLogger::dispatch (PendingDispatch &pending)
 	{
 		// YAGNI: consider a thread for each subscriber if we are in MultiThreadSafe flavor
-		// We would need a thread pool?
-		if (event.logLevel >= this->subscriberLevel)
+		for (auto &event : pending.events)
 		{
-			for (auto &subscriber : subscribers)
+			for (auto &slot : *pending.subscribers)
 			{
-				if (event.logLevel >= subscriber.logLevel)
+				if (event.logLevel < slot->logLevel)
 				{
-					if (useTimed)
-					{
-						subscriber.subscriber.onLogEvent (event.date, event.event + "\tDone in: " + event.usedTimeTxt,
-						                                  event.logLevel);
-					}
-					else
-					{
-						subscriber.subscriber.onLogEvent (event.date, event.event, event.logLevel);
-					}
+					continue;
 				}
+
+				std::lock_guard<std::recursive_mutex> lock (slot->callMtx);
+				if (!slot->active)
+				{
+					continue;
+				}
+
+				++callbackDepth;
+				try
+				{
+					slot->subscriber.onLogEvent (event.date, event.txt, event.logLevel);
+				}
+				catch (const std::exception &e)
+				{
+					Internal::reportError (e.what());
+				}
+				catch (...)
+				{
+					Internal::reportError ("unknown exception in a subscriber");
+				}
+				--callbackDepth;
 			}
 		}
 	}
 
 	void StackLogger::fillEvent (EventContainer &event, std::string &eventTxt)
 	{
-		event.event = std::move (eventTxt);
-
+		event.event     = std::move (eventTxt);
 		event.timePoint = std::chrono::system_clock::now();
 		event.date      = formatTimestamp (event.timePoint);
 	}
@@ -313,14 +511,14 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
-	void StackLogger::processEvent (EventContainer &event)
+	void StackLogger::processEvent (EventContainer &event, PendingDispatch &pending)
 	{
 		// Only with finished Event timed events
 		bool useTimed = EVENT_TYPE_TIMED_FINISHED == event.eventType;
 
 		this->sendToConsole (event, useTimed);
-		this->sendToFile (event, useTimed);
-		this->sendToSubscribers (event, useTimed);
+		this->sendToFile (event, useTimed, pending);
+		this->queueForSubscribers (event, useTimed, pending);
 	}
 
 	void StackLogger::cleanExcedentEvents()
@@ -343,79 +541,17 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
-	EventSubscriber::EventSubscriber (LogEventsSubscriber &subscriber, const LogLevel logLevel)
-	    : subscriber (subscriber)
-	    , logLevel (logLevel)
-	{
-	}
-
 	// ------------------- StackLoggerMTSafe -------------------
-	// This class is a wrapper for StackLogger, adding mutex protection
+	// This class adds mutex protection to StackLogger
 
 	StackLoggerMTSafe::StackLoggerMTSafe()
 	    : StackLogger()
 	{
 	}
 
-	void StackLoggerMTSafe::log (LogLevel logLevel, std::string &event)
+	std::unique_lock<std::mutex> StackLoggerMTSafe::acquire()
 	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		StackLogger::log (logLevel, event);
-	}
-
-	void StackLoggerMTSafe::sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel)
-	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		StackLogger::sendEvents (receiver, logLevel);
-	}
-
-	void StackLoggerMTSafe::subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel)
-	{
-		// do we need to lock the mutex here? It'll happens at the begining of the program, so it should be safe
-		std::lock_guard<std::mutex> lock (this->mtx);
-		StackLogger::subscribePushEvents (receiver, logLevel);
-	}
-
-	void StackLoggerMTSafe::unsubscribePushEvents (LogEventsSubscriber &receiver)
-	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		StackLogger::unsubscribePushEvents (receiver);
-	}
-
-	EventContainer *StackLoggerMTSafe::emplaceTimedEvent (LogLevel logLevel)
-	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		return StackLogger::emplaceTimedEvent (logLevel);
-	}
-
-	void StackLoggerMTSafe::startTimedEvent (EventContainer &event, std::string &eventTxt)
-	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		StackLogger::startTimedEvent (event, eventTxt);
-	}
-
-	void StackLoggerMTSafe::appendToTimedEvent (EventContainer &event, const std::string &eventTxt)
-	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		StackLogger::appendToTimedEvent (event, eventTxt);
-	}
-
-	void StackLoggerMTSafe::finishTimedEvent (EventContainer &event)
-	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		StackLogger::finishTimedEvent (event);
-	}
-
-	void StackLoggerMTSafe::discardTimedEvent (EventContainer &event)
-	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		StackLogger::discardTimedEvent (event);
-	}
-
-	void StackLoggerMTSafe::runLocked (const std::function<void()> &action)
-	{
-		std::lock_guard<std::mutex> lock (this->mtx);
-		action();
+		return std::unique_lock<std::mutex> (this->mtx);
 	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger
