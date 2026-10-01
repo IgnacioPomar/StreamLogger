@@ -28,7 +28,7 @@ class StreamLoggerConan(ConanFile):
     # Only the recipe is published: build it with the consumer's toolchain, without asking for --build
     build_policy = "missing"
 
-    exports_sources = "CMakeLists.txt", "include/*", "src/*", "test/*", "examples/*"
+    exports_sources = "CMakeLists.txt", "cmake/*", "include/*", "src/*", "test/*", "examples/*"
 
     def set_version(self):
         # Single source of truth: project(StreamLogger VERSION x.y.z) in CMakeLists.txt
@@ -64,6 +64,7 @@ class StreamLoggerConan(ConanFile):
         cmake_layout(self)
         # Editable mode: consumers use the headers straight from the source tree
         self.cpp.source.includedirs = ["include"]
+        self.cpp.build.includedirs = ["include"]    # Generated StreamLoggerVersion.h
         self.cpp.build.libdirs = ["."]
 
     def generate(self):

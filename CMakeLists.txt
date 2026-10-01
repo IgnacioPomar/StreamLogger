@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.23)
 
-project(StreamLogger VERSION 0.1.0 LANGUAGES CXX)
+project(StreamLogger
+    VERSION 0.1.0
+    DESCRIPTION "Modern C++ logger library, with event retrieval and color support"
+    LANGUAGES CXX
+)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,6 +23,7 @@ set(STREAMLOGGER_SOURCES
     src/StackLoggerSingleton.cpp
     src/StreamLogger.cpp
     src/StreamLoggerConsts.cpp
+    src/StreamLoggerVersion.cpp
 )
 
 add_library(StreamLogger ${STREAMLOGGER_SOURCES})
@@ -26,6 +31,7 @@ add_library(StreamLogger::StreamLogger ALIAS StreamLogger)
 
 target_include_directories(StreamLogger PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(StreamLogger PUBLIC Threads::Threads)
@@ -43,8 +49,11 @@ set_target_properties(StreamLogger PROPERTIES
     SOVERSION ${STREAMLOGGER_SOVERSION}
 )
 
+# Name, description and version of project(), as macros (STREAMLOGGER_VERSION...)
+configure_file(cmake/StreamLoggerVersion.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/StreamLogger/StreamLoggerVersion.h @ONLY)
+
 install(TARGETS StreamLogger)
-install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY include/ ${CMAKE_CURRENT_BINARY_DIR}/include/ DESTINATION include)
 
 if(STREAMLOGGER_BUILD_EXAMPLES)
     add_executable(StreamLoggerExample examples/example.cpp)
@@ -66,6 +75,7 @@ if(STREAMLOGGER_BUILD_TESTS)
         test/005_Console.cpp
         test/006_MultiThread.cpp
         test/007_Hardening.cpp
+        test/008_Version.cpp
     )
     target_include_directories(StreamLoggerTester PRIVATE src)
     target_link_libraries(StreamLoggerTester PRIVATE StreamLogger Catch2::Catch2WithMain trompeloeil::trompeloeil)
