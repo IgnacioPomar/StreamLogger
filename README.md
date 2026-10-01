@@ -86,7 +86,7 @@ std::cout << lib.name << " " << lib.version << ", built " << lib.buildDate << " 
 ## CI and releases
 
 - `.forgejo/workflows/ci.yml`: on every push and pull request, runs the unit tests and `conan create`.
-- `.forgejo/workflows/release.yml`: on a `vX.Y.Z` tag, publishes the recipe (with the sources) in the Forgejo Conan registry.
+- `.forgejo/workflows/release.yml`: started by hand from Forgejo, asks which part of the version to increase (patch, minor or major), commits the new `VERSION` with its `vX.Y.Z` tag, and publishes the recipe (with the sources) in the Forgejo Conan registry.
 
 The version is only written in the `VERSION` file. See [docs/ci-and-releases.md](docs/ci-and-releases.md) for what each workflow does, the version numbering rules and how to create a release.
 
