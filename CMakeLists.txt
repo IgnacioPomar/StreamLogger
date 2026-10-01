@@ -31,10 +31,19 @@ target_include_directories(StreamLogger PUBLIC
 )
 target_link_libraries(StreamLogger PUBLIC Threads::Threads)
 
+# Before 1.0 a minor version may break the ABI: libStreamLogger.so.0.1 -> libStreamLogger.so.0.1.0
+if(PROJECT_VERSION_MAJOR EQUAL 0)
+    set(STREAMLOGGER_SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+else()
+    set(STREAMLOGGER_SOVERSION ${PROJECT_VERSION_MAJOR})
+endif()
+
 # Only the symbols marked with LGGR_API are exported from the shared library
 set_target_properties(StreamLogger PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${STREAMLOGGER_SOVERSION}
 )
 
 # Generated LGGR_API / LGGR_LOCAL / LGGR_DEPRECATED: empty for a static library, export/import for a shared one
