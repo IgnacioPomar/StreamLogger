@@ -1,11 +1,15 @@
+import os
+import re
+
 from conan import ConanFile
+from conan.errors import ConanException
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
+from conan.tools.files import load
 
 
 class StreamLoggerConan(ConanFile):
     name = "streamlogger"
-    version = "0.1.0"
     license = "Unlicense"
     description = "Modern C++ logger library, with event retrieval and color support"
 
@@ -22,6 +26,16 @@ class StreamLoggerConan(ConanFile):
     }
 
     exports_sources = "CMakeLists.txt", "include/*", "src/*", "test/*", "examples/*"
+
+    def set_version(self):
+        # Single source of truth: project(StreamLogger VERSION x.y.z) in CMakeLists.txt
+        cmakelists = load(self, os.path.join(self.recipe_folder, "CMakeLists.txt"))
+        match = re.search(r"project\s*\(\s*StreamLogger\s+VERSION\s+(\d+\.\d+\.\d+)", cmakelists)
+        if not match:
+            raise ConanException("Can not read the version from CMakeLists.txt")
+        if self.version and self.version != match.group(1):
+            raise ConanException(f"--version={self.version} does not match the CMakeLists.txt version {match.group(1)}")
+        self.version = match.group(1)
 
     def config_options(self):
         if self.settings.os == "Windows":
