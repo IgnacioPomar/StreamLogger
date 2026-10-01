@@ -1,0 +1,42 @@
+name: Release
+
+# Push a tag vX.Y.Z (the version in CMakeLists.txt) to publish the package in the Forgejo Conan registry
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  conan-upload:
+    runs-on: docker
+    container:
+      image: node:22-trixie    # Debian 13 (gcc 14), as the devcontainer. Node is needed by the actions
+    env:
+      # Credentials of the "forgejo" Conan remote: a user and a token with the write:package scope
+      CONAN_LOGIN_USERNAME_FORGEJO: ${{ secrets.CONAN_USER }}
+      CONAN_PASSWORD_FORGEJO: ${{ secrets.CONAN_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the toolchain
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential cmake python3-venv
+          python3 -m venv /opt/conan-env
+          /opt/conan-env/bin/pip install --no-cache-dir "conan>=2.0"
+          echo "/opt/conan-env/bin" >> "$GITHUB_PATH"
+
+      - name: Configure Conan
+        run: |
+          conan profile detect --force
+          conan remote add forgejo "${{ github.server_url }}/api/packages/${{ github.repository_owner }}/conan"
+
+      # --version fails if the tag does not match the CMakeLists.txt version (set_version)
+      - name: Create the packages (shared and static)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          conan create . --version "$VERSION" --build=missing -s compiler.cppstd=20
+          conan create . --version "$VERSION" --build=missing -s compiler.cppstd=20 -o "streamlogger/*:shared=False"
+
+      # The recipe is uploaded with its sources (exports_sources): other configurations can --build=missing
+      - name: Upload to the Forgejo Conan registry
+        run: conan upload "streamlogger/${GITHUB_REF_NAME#v}" -r forgejo --confirm
