@@ -4,13 +4,9 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
-#if __has_include(<format>)
-#	include <format>
-#endif
 #include <chrono>
-#include <iomanip>
+#include <cstdio>
 #include <iostream>
-#include <sstream>
 
 #include <filesystem>
 
@@ -24,6 +20,33 @@ namespace IgnacioPomar::Util::StreamLogger
 {
 
 	namespace fs = std::filesystem;
+
+	namespace
+	{
+		// Same format with any compiler: 2024-04-17 15:28:07.215 UTC
+		std::string formatTimestamp (TimePoint timePoint)
+		{
+			using namespace std::chrono;
+			auto ms  = floor<milliseconds> (timePoint);
+			auto day = floor<days> (ms);
+			year_month_day ymd {day};
+			hh_mm_ss hms {ms - day};
+
+			char buf [48];
+			std::snprintf (buf, sizeof (buf), "%04d-%02u-%02u %02d:%02d:%02d.%03d UTC", int (ymd.year()),
+			               unsigned (ymd.month()), unsigned (ymd.day()), int (hms.hours().count()),
+			               int (hms.minutes().count()), int (hms.seconds().count()), int (hms.subseconds().count()));
+			return buf;
+		}
+
+		std::string formatDate (std::chrono::year_month_day ymd)
+		{
+			char buf [24];
+			std::snprintf (buf, sizeof (buf), "%04d-%02u-%02u", int (ymd.year()), unsigned (ymd.month()),
+			               unsigned (ymd.day()));
+			return buf;
+		}
+	}    // namespace
 
 	StackLogger::StackLogger() {}
 
@@ -163,22 +186,11 @@ namespace IgnacioPomar::Util::StreamLogger
 						this->logfile.close();
 					}
 
-#if __has_include(<format>)
-					auto formattedDate = std::format ("{:04}-{:02}-{:02}", int (ymd.year()), unsigned (ymd.month()),
-					                                  unsigned (ymd.day()));
-#else
-					std::ostringstream oss;
-					oss << std::setw (4) << std::setfill ('0') << int (ymd.year()) << "-";
-					oss << std::setw (2) << std::setfill ('0') << unsigned (ymd.month()) << "-";
-					oss << std::setw (2) << std::setfill ('0') << unsigned (ymd.day());
-
-					std::string formattedDate = oss.str();
-#endif
 					size_t pos = logFilePattern.find ("%d");
 					if (pos != std::string::npos)
 					{
 						this->logFilename = logFilePattern;
-						this->logFilename.replace (pos, 2, formattedDate);
+						this->logFilename.replace (pos, 2, formatDate (ymd));
 					}
 					else
 					{
@@ -247,18 +259,7 @@ namespace IgnacioPomar::Util::StreamLogger
 		event.event = std::move (eventTxt);
 
 		event.timePoint = std::chrono::system_clock::now();
-#if __has_include(<format>)
-
-		event.date = format ("{}", event.timePoint);
-#else
-		auto in_time_t = std::chrono::system_clock::to_time_t (event.timePoint);
-		struct tm buf;
-		gmtime_r (&in_time_t, &buf);
-		char str [100];
-		strftime ((char *) str, sizeof (str), "%F %T UTC", &buf);
-
-		event.date = str;
-#endif
+		event.date      = formatTimestamp (event.timePoint);
 	}
 
 	void StackLogger::fillElapsedTime (EventContainer &event)

@@ -53,6 +53,7 @@ if(STREAMLOGGER_BUILD_TESTS)
         test/004_LogFile.cpp
         test/005_Console.cpp
         test/006_MultiThread.cpp
+        test/007_Hardening.cpp
     )
     # The tests also use the internal headers, to test isolated StackLogger instances
     target_include_directories(StreamLoggerTester PRIVATE src)
