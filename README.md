@@ -75,15 +75,10 @@ target_link_libraries(myTarget PRIVATE StreamLogger::StreamLogger)
 
 ## CI and releases
 
-The Forgejo Actions workflows are in `.forgejo/workflows/`:
+- `.forgejo/workflows/ci.yml`: on every push and pull request, runs the unit tests and `conan create`.
+- `.forgejo/workflows/release.yml`: on a `vX.Y.Z` tag, publishes the recipe (with the sources) in the Forgejo Conan registry.
 
-- `ci.yml`: on every push and pull request, runs the unit tests and `conan create`.
-- `release.yml`: on a `vX.Y.Z` tag, builds the shared and static packages (with the `test_package`) and uploads only the recipe and its sources to the Forgejo Conan registry. It needs the `CONAN_USER` and `CONAN_TOKEN` (`write:package` scope) secrets.
-
-The version is only written in `CMakeLists.txt` (`project(StreamLogger VERSION x.y.z)`): the Conan recipe reads it, and it gives the SONAME. To release:
-
-1. Change the version in `CMakeLists.txt` and commit it.
-2. `git tag vX.Y.Z && git push origin vX.Y.Z` (the release fails if the tag does not match the version).
+The version is only written in `CMakeLists.txt`. See [docs/ci-and-releases.md](docs/ci-and-releases.md) for what each workflow does, the version numbering rules and how to create a release.
 
 ## Configuration
 
