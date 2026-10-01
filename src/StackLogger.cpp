@@ -90,7 +90,7 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	void SubscriberSlot::deactivate()
 	{
-		std::lock_guard<std::recursive_mutex> lock (this->callMtx);
+		std::lock_guard<std::recursive_mutex> lock (*this->callMtx);
 		this->active = false;
 	}
 
@@ -245,6 +245,21 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	void StackLogger::addSubscriber (const std::shared_ptr<SubscriberSlot> &slot)
 	{
+		// An object subscribed twice shares the mutex: the slots are only removed after deactivating them, so
+		// every active slot of the object is in the list
+		for (auto &existing : *this->subscribers)
+		{
+			if (&existing->subscriber == &slot->subscriber)
+			{
+				slot->callMtx = existing->callMtx;
+				break;
+			}
+		}
+		if (!slot->callMtx)
+		{
+			slot->callMtx = std::make_shared<std::recursive_mutex>();
+		}
+
 		auto newList = std::make_shared<SubscriberList> (*this->subscribers);
 		newList->push_back (slot);
 		this->subscribers = std::move (newList);
@@ -476,7 +491,7 @@ namespace IgnacioPomar::Util::StreamLogger
 					continue;
 				}
 
-				std::lock_guard<std::recursive_mutex> lock (slot->callMtx);
+				std::lock_guard<std::recursive_mutex> lock (*slot->callMtx);
 				if (!slot->active)
 				{
 					continue;

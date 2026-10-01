@@ -41,7 +41,9 @@ namespace IgnacioPomar::Util::StreamLogger
 			const LogLevel logLevel;
 
 			// Held while calling the subscriber: recursive, so the subscriber can unsubscribe inside its callback
-			std::recursive_mutex callMtx;
+			// Shared by all the active slots of the same subscriber in a logger: it is never called concurrently
+			// Assigned when added to the logger (under its lock)
+			std::shared_ptr<std::recursive_mutex> callMtx;
 			bool active = true;    // Protected by callMtx
 
 			// Waits for a running callback, and avoids new ones

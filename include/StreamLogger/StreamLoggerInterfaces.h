@@ -42,8 +42,8 @@ namespace IgnacioPomar::Util::StreamLogger
 	 *
 	 * The callbacks are called without the logger locked, so they can log, but:
 	 *  - The events logged inside a callback are not pushed to the subscribers (avoids infinite loops)
-	 *  - A subscriber is never called concurrently, but the events of different threads may arrive in a different
-	 *    order than the one in the stack
+	 *  - A subscriber is never called concurrently by the same logger (even if subscribed twice), but the events of
+	 *    different threads may arrive in a different order than the one in the stack
 	 *  - An exception thrown by a callback is reported in stderr, and ignored
 	 */
 	class LGGR_API Subscription

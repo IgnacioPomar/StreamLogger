@@ -418,6 +418,73 @@ TEST_CASE ("The deprecated push interface still works", "[subscribers]")
 	CHECK (collector.texts() == std::vector<std::string> {"Deprecated fatal"});
 }
 
+namespace
+{
+	// Detects concurrent calls
+	class ConcurrencyDetector : public lggr::LogEventsSubscriber
+	{
+		public:
+			std::atomic<int> inFlight {0};
+			std::atomic<bool> concurrent {false};
+			int calls = 0;    // Not atomic on purpose: protected by the logger
+
+			void onLogEvent (const std::string &, const std::string, const lggr::LogLevel) override
+			{
+				if (++inFlight > 1)
+				{
+					concurrent = true;
+				}
+				++calls;
+				std::this_thread::sleep_for (std::chrono::microseconds (50));    // Widen the window
+				--inFlight;
+			}
+	};
+}    // namespace
+
+TEST_CASE ("An object subscribed twice is never called concurrently", "[subscribers][multithread]")
+{
+	constexpr int THREADS = 4;
+	constexpr int EVENTS  = 200;
+
+	lggr::StackLoggerMTSafe logger;
+	silence (logger);
+	ConcurrencyDetector detector;
+	auto first  = logger.subscribe (detector, lggr::LL::INFO);
+	auto second = logger.subscribe (detector, lggr::LL::WARN);
+
+	std::vector<std::thread> threads;
+	for (int t = 0; t < THREADS; t++)
+	{
+		threads.emplace_back ([&logger] {
+			for (int i = 0; i < EVENTS; i++)
+			{
+				log (logger, lggr::LL::WARN, "Event");
+			}
+		});
+	}
+	for (auto &thread : threads)
+	{
+		thread.join();
+	}
+
+	CHECK_FALSE (detector.concurrent);
+	CHECK (detector.calls == 2 * THREADS * EVENTS);    // Each subscription receives the event
+}
+
+TEST_CASE ("The subscriptions of the same object are independent", "[subscribers]")
+{
+	lggr::StackLogger logger;
+	silence (logger);
+	CollectingSubscriber collector;
+	auto info = logger.subscribe (collector, lggr::LL::INFO);
+	{
+		auto errors = logger.subscribe (collector, lggr::LL::ERROR);
+		log (logger, lggr::LL::ERROR, "Twice");
+	}
+	log (logger, lggr::LL::ERROR, "Once");
+	CHECK (collector.texts() == std::vector<std::string> {"Twice", "Twice", "Once"});
+}
+
 //-------------- Date format ----------------
 
 TEST_CASE ("The date has the same format with any compiler", "[date]")
