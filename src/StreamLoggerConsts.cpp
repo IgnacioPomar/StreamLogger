@@ -4,13 +4,13 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
-#include "StreamLoggerConsts.h"
-#include "StreamLogger.h"
+#include "StreamLogger/StreamLoggerConsts.h"
+#include "StreamLogger/StreamLogger.h"
 #include "StackLogger.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
-	const std::string logLevelNames [6] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+	const std::string logLevelNames [7] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF"};
 
 	//--------------  Static Logger instances ----------------
 
@@ -24,7 +24,8 @@ namespace IgnacioPomar::Util::StreamLogger
 	//--------------   Utility Functions ----------------
 	const std::string &getLevelName (LogLevel logLevel)
 	{
-		return logLevelNames [static_cast<int> (logLevel)];
+		int lvl = static_cast<int> (logLevel);
+		return logLevelNames [(lvl < 6) ? lvl : 6];
 	}
 
 	//-------------- Event retransmission ----------------
@@ -37,6 +38,11 @@ namespace IgnacioPomar::Util::StreamLogger
 	void subscribePushEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel)
 	{
 		getLogger().subscribePushEvents (subscriber, logLevel);
+	}
+
+	void unsubscribePushEvents (LogEventsSubscriber &subscriber)
+	{
+		getLogger().unsubscribePushEvents (subscriber);
 	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger

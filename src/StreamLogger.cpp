@@ -7,9 +7,9 @@
 #include <string>
 
 #include "EventContainer.h"
-#include "StreamLoggerConsts.h"
+#include "StreamLogger/StreamLoggerConsts.h"
 #include "StackLogger.h"
-#include "StreamLogger.h"
+#include "StreamLogger/StreamLogger.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
@@ -36,9 +36,7 @@ namespace IgnacioPomar::Util::StreamLogger
 	TimedEvent::~TimedEvent()
 	{
 		// The event has finised, we mark as finished, and reprocess it
-		StackLogger &logger = getLogger();
-		logger.fillElapsedTime (event);
-		logger.processEvent (event);
+		getLogger().finishTimedEvent (event);
 
 		// YAGNI: If event inder the stackLevel, we should remove it from the stack
 	}
@@ -55,14 +53,12 @@ namespace IgnacioPomar::Util::StreamLogger
 		{
 			// Call the log a second time means a second line of descriptions.
 			// we simply add the message to the event
-			event.event += message;
+			getLogger().appendToTimedEvent (event, message);
 		}
 		else
 		{
 			// In timed Events, log is in fact a "Start" event
-			StackLogger &logger = getLogger();
-			logger.fillEvent (event, message);
-			logger.processEvent (event);
+			getLogger().startTimedEvent (event, message);
 			this->started = true;
 		}
 	}

@@ -15,27 +15,77 @@ StreamLogger extends traditional logging functionalities to support event-driven
 
 ## Wishlist
 These are things that seem to me like a good idea. Not all of these are likely to be implemented without outside help, and some of them will positively never be implemented.
-- Support Linux colors
 - Category classification
 - Keep thread id if multithread
 
 Probably impossible:
 - Keep file and line number (impossible if we want to keep the stream interface)
 
+## Build
+
+Requirements: CMake >= 3.23, a C++20 compiler and Conan 2.
+
+```bash
+conan install . --build=missing -s compiler.cppstd=20 -o build_tests=True
+cmake --preset conan-release
+cmake --build --preset conan-release
+ctest --preset conan-release
+```
+
+The tests use [Catch2](https://github.com/catchorg/Catch2) and [Trompeloeil](https://github.com/rollbear/trompeloeil). With `build_tests=True` the example (`examples/example.cpp`) is also built.
+
+Without Conan, it can be added to a CMake project with `add_subdirectory` (the tests are off by default):
+
+```cmake
+add_subdirectory(StreamLogger)
+target_link_libraries(myTarget PRIVATE StreamLogger::StreamLogger)
+```
+
+## Conan package
+
+```bash
+conan create . --build=missing -s compiler.cppstd=20
+```
+
+Usage from another project:
+
+```python
+self.requires("streamlogger/0.1.0")
+```
+
+```cmake
+find_package(StreamLogger REQUIRED)
+target_link_libraries(myTarget PRIVATE StreamLogger::StreamLogger)
+```
+
+```cpp
+#include "StreamLogger/StreamLogger.h"
+```
+
+## Configuration
+
+All the configuration is in `lggr::Config`. The default values are in `StreamLogger::DEFAULTS` (`StreamLoggerConsts.h`):
+
+- **Multi-thread safe** by default. `Config::setMultiThreadSafe (false)` must be called before the first log.
+- **Console**: the output goes to `std::clog` (stderr), from `INFO`. The colors (`Config::setColorMode`) are `AUTO` by default: only if stderr is a terminal and the [`NO_COLOR`](https://no-color.org) environment variable is not set, so journald or Docker do not get ANSI sequences.
+- **File**: disabled by default. Enable it with `Config::setFileLevel`. The file name (`Config::setOutFile`) rotates each day if it has a `%d` (UTC date); the default is `%d_StreamedLog.log`. The path (`Config::setOutPath`) is the working directory by default. If the file can not be opened, the file output is disabled and an `ERROR` event is generated.
+- **Stack**: the last 1000 events from `INFO` are kept in memory, to be pulled with `pullLogEvents`.
+- **Push subscribers**: `subscribePushEvents` / `unsubscribePushEvents`. A subscriber must unsubscribe before being destroyed. The subscribers are called with the logger locked: they must not log.
+
 ## Example of use
 
 Here is a simple example demonstrating how to use StreamLogger in your application:
 
 ```cpp
-#include "StreamLogger.h"
+#include <iostream>
+#include "StreamLogger/StreamLogger.h"
 
 namespace lggr = IgnacioPomar::Util::StreamLogger;
-
 
 class EventReprinter : public lggr::LogEventsSubscriber
 {
 	public:
-		void onLogEvent (const std::string &date, const std::string logTxt, lggr::LogLevel logLevel) const
+		void onLogEvent (const std::string &date, const std::string logTxt, lggr::LogLevel logLevel)
 		{
 			// Parse as json, or save to a database, or whatever action you want
 			std::cout << ">>> EVENT Pulled >>>\t" << date << " [" << lggr::getLevelName (logLevel) << "]\t" << logTxt
@@ -46,7 +96,7 @@ class EventReprinter : public lggr::LogEventsSubscriber
 class PushEventHandler : public lggr::LogEventsSubscriber
 {
 	public:
-		void onLogEvent (const std::string &date, const std::string logTxt, lggr::LogLevel logLevel) const
+		void onLogEvent (const std::string &date, const std::string logTxt, lggr::LogLevel logLevel)
 		{
 			// Use a web service, or call a function, or call a script, or whatever action you want
 			std::cout << "***** PUSH EVENT ***** \t\t" << lggr::getLevelName (logLevel) << "\t\t" << logTxt
@@ -56,7 +106,7 @@ class PushEventHandler : public lggr::LogEventsSubscriber
 
 int main ()
 {
-	lggr::Config::setMultiThreadSafe (true);
+	lggr::Config::setMultiThreadSafe (true);    // Already the default
 
 	PushEventHandler pushHandler;
 	lggr::subscribePushEvents (pushHandler, lggr::LL::FATAL);
@@ -64,8 +114,9 @@ int main ()
 	// Default values in StreamLogger::DEFAULTS, defined in StreamLoggerConsts.h
 	lggr::Config::setStackLevel (lggr::LogLevel::INFO);
 	lggr::Config::setConsoleLevel (lggr::LL::TRACE);
-	// lggr::Config::setFileLevel (lggr::LL::INFO);
-	// lggr::Config::setOutPath ("./logs"); //Default is the executable path
+	lggr::Config::setFileLevel (lggr::LL::INFO);    // Default is OFF: no log file
+	// lggr::Config::setOutPath ("./logs"); //Default is the working directory
+	// lggr::Config::setColorMode (lggr::ColorMode::NEVER); //Default is AUTO: only in a terminal
 	lggr::Config::setOutFile ("%d_MyLog.log");
 
 	int line = 0;
@@ -97,9 +148,19 @@ int main ()
 	lggr::error << line++ << "\tfell asleep,  fell asleep";
 	lggr::fatal << "There is no bridge left! the thieves stole it!!";
 
-	// Show events.... again
+	// Second TEST: ONLY subscriber events
+	lggr::Config::setFileLevel (lggr::LL::OFF);
+	lggr::Config::setStackLevel (lggr::LL::OFF);
+	lggr::Config::setConsoleLevel (lggr::LL::OFF);
+
+	lggr::info << "This message will be ignored";
+	lggr::fatal << "This message will be shown only as push";
+
+	// Show events.... again (except the last one)
 	EventReprinter reprinter;
-	pullLogEvents (reprinter, lggr::LL::ERROR);
+	lggr::pullLogEvents (reprinter, lggr::LL::INFO);
+
+	lggr::unsubscribePushEvents (pushHandler);
 
 	return 0;
 }

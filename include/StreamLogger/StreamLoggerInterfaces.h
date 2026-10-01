@@ -28,11 +28,14 @@ namespace IgnacioPomar::Util::StreamLogger
 	class LogEventsSubscriber
 	{
 		public:
+			virtual ~LogEventsSubscriber() = default;
 			virtual void onLogEvent (const std::string &date, const std::string logTxt, const LogLevel logLevel) = 0;
 	};
 
 	LGGR_API void pullLogEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel);
 	LGGR_API void subscribePushEvents (LogEventsSubscriber &subscriber, const LogLevel logLevel);
+	// Must be called before the subscriber is destroyed
+	LGGR_API void unsubscribePushEvents (LogEventsSubscriber &subscriber);
 
 }    // namespace IgnacioPomar::Util::StreamLogger
 #endif    // __STREAM_LOGGER_INTERFACES_H

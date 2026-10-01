@@ -6,10 +6,11 @@
 
 #include <string>
 
-#include "StreamLoggerConsts.h"
+#include "StreamLogger/StreamLoggerConsts.h"
 #include "StackLoggerConfig.h"
+#include "LoggerConsoleUtils.h"
 #include "StackLogger.h"
-#include "StreamLogger.h"
+#include "StreamLogger/StreamLogger.h"
 
 namespace IgnacioPomar::Util::StreamLogger
 {
@@ -32,44 +33,62 @@ namespace IgnacioPomar::Util::StreamLogger
 
 		void setStackSize (unsigned int stackSize)
 		{
-			getLogger().setStackSize (stackSize);
+			getLogger().runLocked ([&] { getLogger().setStackSize (stackSize); });
 		}
 
 		void setOutFile (const std::string fileName)
 		{
-			getLogger().setOutFile (fileName);
+			getLogger().runLocked ([&] { getLogger().setOutFile (fileName); });
 		}
 
 		void setOutPath (const std::string filePath)
 		{
-			getLogger().setOutPath (filePath);
+			getLogger().runLocked ([&] { getLogger().setOutPath (filePath); });
 		}
 		void setLevelColor (LogLevel logLevel, LogColor logColor)
 		{
-			getLogger().setLevelColor (logLevel, logColor);
+			getLogger().runLocked ([&] { getLogger().setLevelColor (logLevel, logColor); });
+		}
+
+		void setColorMode (ColorMode colorMode)
+		{
+			getLogger().runLocked ([&] { getLogger().setColorMode (colorMode); });
 		}
 
 		void setConsoleLevel (LogLevel logLevel)
 		{
-			getLogger().setConsoleLevel (logLevel);
+			getLogger().runLocked ([&] { getLogger().setConsoleLevel (logLevel); });
 		}
 
 		void setFileLevel (LogLevel logLevel)
 		{
-			getLogger().setFileLevel (logLevel);
+			getLogger().runLocked ([&] { getLogger().setFileLevel (logLevel); });
 		}
 
 		void setStackLevel (LogLevel logLevel)
 		{
-			getLogger().setStackLevel (logLevel);
+			getLogger().runLocked ([&] { getLogger().setStackLevel (logLevel); });
 		}
 	};    // namespace Config
 
 	//--------------  Configuration functions ----------------
 	void StackLoggerConfig::setLevelColor (LogLevel logLevel, LogColor logColor)
 	{
-		this->levelColors [static_cast<int> (logLevel)] = logColor;
-		this->setEffectiveLevel();
+		int lvl = static_cast<int> (logLevel);
+		if (lvl < 6)    // OFF has no color
+		{
+			this->levelColors [lvl] = logColor;
+		}
+	}
+
+	void StackLoggerConfig::setColorMode (ColorMode colorMode)
+	{
+		switch (colorMode)
+		{
+		case ColorMode::ALWAYS: this->useColors = true; break;
+		case ColorMode::NEVER: this->useColors = false; break;
+		default: this->useColors = isColorConsole(); break;
+		}
 	}
 
 	void StackLoggerConfig::setConsoleLevel (LogLevel logLevel)
@@ -162,6 +181,8 @@ namespace IgnacioPomar::Util::StreamLogger
 		this->levelColors [3] = DEFAULTS::COLOR_WARN;
 		this->levelColors [4] = DEFAULTS::COLOR_ERROR;
 		this->levelColors [5] = DEFAULTS::COLOR_FATAL;
+
+		this->setColorMode (DEFAULTS::COLOR_MODE);
 	}
 
 	void StackLoggerConfig::setStackSize (unsigned int stackSize)
@@ -186,6 +207,10 @@ namespace IgnacioPomar::Util::StreamLogger
 	void StackLoggerConfig::setOutPath (const std::string filePath)
 	{
 		this->logPath = filePath;
+
+		// Force reopening the file in the new path
+		this->hasRotation = true;
+		this->lastLogDate = std::chrono::year_month_day {};
 	}
 
 }    // namespace IgnacioPomar::Util::StreamLogger

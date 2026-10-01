@@ -13,10 +13,11 @@
 #	include <fstream>
 #	include <chrono>
 
+#	include <functional>
 #	include <mutex>
 
-#	include "StreamLoggerInterfaces.h"
-#	include "StreamLoggerConsts.h"
+#	include "StreamLogger/StreamLoggerInterfaces.h"
+#	include "StreamLogger/StreamLoggerConsts.h"
 #	include "EventContainer.h"
 #	include "StackLoggerConfig.h"
 
@@ -52,6 +53,8 @@ namespace IgnacioPomar::Util::StreamLogger
 			void sendToFile (EventContainer &event, bool useTimed);
 			void sendToSubscribers (EventContainer &event, bool useTimed);
 
+			void storeAndProcess (LogLevel logLevel, std::string &event);
+
 		protected:
 			void cleanExcedentEvents ();
 
@@ -65,11 +68,19 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			// void delLogsOltherThan (int maxLogFileDays);
 
+			// The virtual methods are the entry points: the MT safe version locks them
 			virtual void log (LogLevel logLevel, std::string &event);
 			virtual void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
 			virtual void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
+			virtual void unsubscribePushEvents (LogEventsSubscriber &receiver);
 
 			virtual EventContainer &emplaceEvent (LogLevel logLevel);
+			virtual void startTimedEvent (EventContainer &event, std::string &eventTxt);
+			virtual void appendToTimedEvent (EventContainer &event, const std::string &eventTxt);
+			virtual void finishTimedEvent (EventContainer &event);
+
+			// Used to change the configuration
+			virtual void runLocked (const std::function<void()> &action);
 	};
 
 	class StackLoggerMTSafe : public StackLogger
@@ -94,8 +105,14 @@ namespace IgnacioPomar::Util::StreamLogger
 			void log (LogLevel logLevel, std::string &event) override;
 			void sendEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
 			void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
+			void unsubscribePushEvents (LogEventsSubscriber &receiver) override;
 
 			EventContainer &emplaceEvent (LogLevel logLevel) override;
+			void startTimedEvent (EventContainer &event, std::string &eventTxt) override;
+			void appendToTimedEvent (EventContainer &event, const std::string &eventTxt) override;
+			void finishTimedEvent (EventContainer &event) override;
+
+			void runLocked (const std::function<void()> &action) override;
 	};
 
 	StackLogger &getLogger ();
