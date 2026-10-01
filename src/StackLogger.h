@@ -77,10 +77,12 @@ namespace IgnacioPomar::Util::StreamLogger
 			virtual void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel);
 			virtual void unsubscribePushEvents (LogEventsSubscriber &receiver);
 
-			virtual EventContainer &emplaceEvent (LogLevel logLevel);
+			// The event is marked as running before releasing the lock: it can not be removed from the stack
+			virtual EventContainer *emplaceTimedEvent (LogLevel logLevel);
 			virtual void startTimedEvent (EventContainer &event, std::string &eventTxt);
 			virtual void appendToTimedEvent (EventContainer &event, const std::string &eventTxt);
 			virtual void finishTimedEvent (EventContainer &event);
+			virtual void discardTimedEvent (EventContainer &event);    // Never started: it is removed
 
 			// Used to change the configuration
 			virtual void runLocked (const std::function<void()> &action);
@@ -110,10 +112,11 @@ namespace IgnacioPomar::Util::StreamLogger
 			void subscribePushEvents (LogEventsSubscriber &receiver, LogLevel logLevel) override;
 			void unsubscribePushEvents (LogEventsSubscriber &receiver) override;
 
-			EventContainer &emplaceEvent (LogLevel logLevel) override;
+			EventContainer *emplaceTimedEvent (LogLevel logLevel) override;
 			void startTimedEvent (EventContainer &event, std::string &eventTxt) override;
 			void appendToTimedEvent (EventContainer &event, const std::string &eventTxt) override;
 			void finishTimedEvent (EventContainer &event) override;
+			void discardTimedEvent (EventContainer &event) override;
 
 			void runLocked (const std::function<void()> &action) override;
 	};

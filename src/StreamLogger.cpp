@@ -32,18 +32,34 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	TimedEvent StaticLogger::startTimedEvent()
 	{
-		// Add new event in the stack logger (without the fill)
-		return TimedEvent (getLogger().emplaceEvent (level));
+		if (!this->isEnabled())
+		{
+			return TimedEvent (nullptr);
+		}
+		// Add new event in the stack logger (without the fill), already marked as running
+		return TimedEvent (getLogger().emplaceTimedEvent (level));
 	}
 
-	//-------------- StaticLogger ----------------
+	//-------------- TimedEvent ----------------
 
 	TimedEvent::~TimedEvent()
 	{
+		if (this->event == nullptr)
+		{
+			return;
+		}
+
 		try
 		{
-			// The event has finised, we mark as finished, and reprocess it
-			getLogger().finishTimedEvent (event);
+			if (this->started)
+			{
+				// The event has finised, we mark as finished, and reprocess it
+				getLogger().finishTimedEvent (*event);
+			}
+			else
+			{
+				getLogger().discardTimedEvent (*event);
+			}
 		}
 		catch (const std::exception &e)
 		{
@@ -57,29 +73,33 @@ namespace IgnacioPomar::Util::StreamLogger
 		// YAGNI: If event inder the stackLevel, we should remove it from the stack
 	}
 
-	TimedEvent::TimedEvent (EventContainer &event)
+	TimedEvent::TimedEvent (EventContainer *event) noexcept
 	    : event (event)
 	{
-		event.eventType = EVENT_TYPE_TIMED_RUNNING;
 	}
 
 	bool TimedEvent::isEnabled() const
 	{
-		return true;
+		return this->event != nullptr;
 	}
 
 	void TimedEvent::log (std::string &message)
 	{
+		if (this->event == nullptr)
+		{
+			return;
+		}
+
 		if (this->started)
 		{
 			// Call the log a second time means a second line of descriptions.
 			// we simply add the message to the event
-			getLogger().appendToTimedEvent (event, message);
+			getLogger().appendToTimedEvent (*event, message);
 		}
 		else
 		{
 			// In timed Events, log is in fact a "Start" event
-			getLogger().startTimedEvent (event, message);
+			getLogger().startTimedEvent (*event, message);
 			this->started = true;
 		}
 	}

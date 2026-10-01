@@ -4,7 +4,9 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
+#include <atomic>
 #include <stdexcept>
+#include <thread>
 
 #include <catch2/matchers/catch_matchers_string.hpp>
 
@@ -45,6 +47,18 @@ namespace
 				return enabled;
 			}
 	};
+
+	std::vector<std::string> pullAll ()
+	{
+		CollectingSubscriber collector;
+		lggr::pullLogEvents (collector, lggr::LL::TRACE);
+		return collector.texts();
+	}
+
+	bool contains (const std::vector<std::string> &texts, const std::string &txt)
+	{
+		return std::find (texts.begin(), texts.end(), txt) != texts.end();
+	}
 }    // namespace
 
 //-------------- Filter before format ----------------
@@ -98,6 +112,82 @@ TEST_CASE ("The static loggers know if they are enabled", "[filter]")
 	CollectingSubscriber collector;
 	ScopedPushSubscription subscription (collector, lggr::LL::TRACE);
 	CHECK (lggr::trace.isEnabled());
+}
+
+//-------------- Timed events ----------------
+
+TEST_CASE ("A disabled timed event does nothing", "[timed]")
+{
+	lggr::Config::setConsoleLevel (lggr::LL::OFF);
+	lggr::Config::setStackLevel (lggr::LL::INFO);
+
+	{
+		auto timedEvt = lggr::trace.startTimedEvent();
+		CHECK_FALSE (timedEvt.isEnabled());
+		timedEvt << "Disabled timed event";
+	}
+	CHECK_FALSE (contains (pullAll(), "Disabled timed event"));
+}
+
+TEST_CASE ("A timed event never started is discarded", "[timed]")
+{
+	lggr::Config::setConsoleLevel (lggr::LL::OFF);
+	lggr::Config::setStackLevel (lggr::LL::INFO);
+
+	auto before = pullAll().size();
+	{
+		auto timedEvt = lggr::info.startTimedEvent();
+		CHECK (timedEvt.isEnabled());
+		CHECK (pullAll().size() == before);    // Not started: not visible
+	}
+	lggr::info << "After the discarded event";
+	auto texts = pullAll();
+	CHECK_FALSE (contains (texts, ""));
+	CHECK (contains (texts, "After the discarded event"));
+}
+
+TEST_CASE ("Timed events survive a small stack with concurrent logs", "[timed][multithread]")
+{
+	// It used to be a use-after-free: the event was removed before being marked as running
+	lggr::Config::setConsoleLevel (lggr::LL::OFF);
+	lggr::Config::setStackLevel (lggr::LL::INFO);
+	lggr::Config::setStackSize (1);
+
+	constexpr int ITERATIONS = 2000;
+	std::atomic<bool> stop {false};
+
+	std::vector<std::thread> loggers;
+	for (int t = 0; t < 3; t++)
+	{
+		loggers.emplace_back ([&stop] {
+			while (!stop)
+			{
+				lggr::info << "Filler";
+			}
+		});
+	}
+
+	CollectingSubscriber collector;
+	{
+		ScopedPushSubscription subscription (collector, lggr::LL::WARN);
+		for (int i = 0; i < ITERATIONS; i++)
+		{
+			auto timedEvt = lggr::warn.startTimedEvent();
+			timedEvt << "Task " << i;
+			timedEvt << " more";
+		}
+	}
+	stop = true;
+	for (auto &thread : loggers)
+	{
+		thread.join();
+	}
+
+	// Start and finish of each event
+	REQUIRE (collector.events.size() == 2 * ITERATIONS);
+	CHECK (collector.events [1].txt.starts_with ("Task 0 more\tDone in: "));
+
+	lggr::Config::setStackSize (lggr::DEFAULTS::STACK_SIZE);
 }
 
 //-------------- Errors ----------------

@@ -81,12 +81,12 @@ namespace IgnacioPomar::Util::StreamLogger
 	class LGGR_API TimedEvent : public BaseStreamLogger
 	{
 		private:
-			EventContainer &event;
+			EventContainer *event;    // nullptr if the level was disabled: then, it does nothing
 			bool started = false;
 
 		public:
 			~TimedEvent();
-			TimedEvent (EventContainer &event);
+			explicit TimedEvent (EventContainer *event) noexcept;
 			TimedEvent (const TimedEvent &)            = delete;    // the event is finished on destruction
 			TimedEvent &operator= (const TimedEvent &) = delete;
 			void log (std::string &message) override;

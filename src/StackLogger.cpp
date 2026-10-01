@@ -68,7 +68,8 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		for (auto &event : events)
 		{
-			if (event.logLevel >= logLevel)
+			// A timed event not yet started has no data
+			if (event.logLevel >= logLevel && !event.date.empty())
 			{
 				subscriber.onLogEvent (event.date, event.event, event.logLevel);
 			}
@@ -119,9 +120,11 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
-	EventContainer &StackLogger::emplaceEvent (LogLevel logLevel)
+	EventContainer *StackLogger::emplaceTimedEvent (LogLevel logLevel)
 	{
-		return events.emplace_back (logLevel);
+		EventContainer &newEvent = events.emplace_back (logLevel);
+		newEvent.eventType       = EVENT_TYPE_TIMED_RUNNING;
+		return &newEvent;
 	}
 
 	void StackLogger::startTimedEvent (EventContainer &event, std::string &eventTxt)
@@ -139,6 +142,12 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		this->fillElapsedTime (event);
 		this->processEvent (event);
+		this->cleanExcedentEvents();
+	}
+
+	void StackLogger::discardTimedEvent (EventContainer &event)
+	{
+		this->events.remove_if ([&event] (const EventContainer &e) { return &e == &event; });
 	}
 
 	void StackLogger::runLocked (const std::function<void()> &action)
@@ -373,10 +382,10 @@ namespace IgnacioPomar::Util::StreamLogger
 		StackLogger::unsubscribePushEvents (receiver);
 	}
 
-	EventContainer &StackLoggerMTSafe::emplaceEvent (LogLevel logLevel)
+	EventContainer *StackLoggerMTSafe::emplaceTimedEvent (LogLevel logLevel)
 	{
 		std::lock_guard<std::mutex> lock (this->mtx);
-		return StackLogger::emplaceEvent (logLevel);
+		return StackLogger::emplaceTimedEvent (logLevel);
 	}
 
 	void StackLoggerMTSafe::startTimedEvent (EventContainer &event, std::string &eventTxt)
@@ -395,6 +404,12 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		std::lock_guard<std::mutex> lock (this->mtx);
 		StackLogger::finishTimedEvent (event);
+	}
+
+	void StackLoggerMTSafe::discardTimedEvent (EventContainer &event)
+	{
+		std::lock_guard<std::mutex> lock (this->mtx);
+		StackLogger::discardTimedEvent (event);
 	}
 
 	void StackLoggerMTSafe::runLocked (const std::function<void()> &action)
