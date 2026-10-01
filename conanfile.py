@@ -28,17 +28,17 @@ class StreamLoggerConan(ConanFile):
     # Only the recipe is published: build it with the consumer's toolchain, without asking for --build
     build_policy = "missing"
 
-    exports_sources = "CMakeLists.txt", "cmake/*", "include/*", "src/*", "test/*", "examples/*"
+    exports = "VERSION"
+    exports_sources = "VERSION", "CMakeLists.txt", "cmake/*", "include/*", "src/*", "test/*", "examples/*"
 
     def set_version(self):
-        # Single source of truth: project(StreamLogger VERSION x.y.z) in CMakeLists.txt
-        cmakelists = load(self, os.path.join(self.recipe_folder, "CMakeLists.txt"))
-        match = re.search(r"project\s*\(\s*StreamLogger\s+VERSION\s+(\d+\.\d+\.\d+)", cmakelists)
-        if not match:
-            raise ConanException("Can not read the version from CMakeLists.txt")
-        if self.version and self.version != match.group(1):
-            raise ConanException(f"--version={self.version} does not match the CMakeLists.txt version {match.group(1)}")
-        self.version = match.group(1)
+        # Single source of truth: the VERSION file (also read by CMakeLists.txt and the CI)
+        version = load(self, os.path.join(self.recipe_folder, "VERSION")).strip()
+        if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+            raise ConanException(f"VERSION must be MAJOR.MINOR.PATCH, not '{version}'")
+        if self.version and self.version != version:
+            raise ConanException(f"--version={self.version} does not match the VERSION file ({version})")
+        self.version = version
 
     def config_options(self):
         if self.settings.os == "Windows":

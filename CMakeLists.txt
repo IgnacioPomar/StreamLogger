@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.23)
 
+# Single source of truth for the version: the VERSION file (MAJOR.MINOR.PATCH), also read by Conan and the CI
+file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/VERSION STREAMLOGGER_VERSION LIMIT_COUNT 1)
+if(NOT STREAMLOGGER_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "VERSION must be MAJOR.MINOR.PATCH, not '${STREAMLOGGER_VERSION}'")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS VERSION)
+
 project(StreamLogger
-    VERSION 0.1.0
+    VERSION ${STREAMLOGGER_VERSION}
     DESCRIPTION "Modern C++ logger library, with event retrieval and color support"
     LANGUAGES CXX
 )
