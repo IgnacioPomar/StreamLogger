@@ -25,6 +25,11 @@ namespace IgnacioPomar::Util::StreamLogger
 		getLogger().log (level, message);
 	}
 
+	bool StaticLogger::isEnabled() const
+	{
+		return getLogger().isEnabled (level);
+	}
+
 	TimedEvent StaticLogger::startTimedEvent()
 	{
 		// Add new event in the stack logger (without the fill)
@@ -56,6 +61,11 @@ namespace IgnacioPomar::Util::StreamLogger
 	    : event (event)
 	{
 		event.eventType = EVENT_TYPE_TIMED_RUNNING;
+	}
+
+	bool TimedEvent::isEnabled() const
+	{
+		return true;
 	}
 
 	void TimedEvent::log (std::string &message)

@@ -66,6 +66,9 @@ namespace IgnacioPomar::Util::StreamLogger
 			void fillElapsedTime (EventContainer &event);
 			void processEvent (EventContainer &event);
 
+			// Without lock: the definitive check is done in log()
+			bool isEnabled (LogLevel logLevel) const noexcept;
+
 			// void delLogsOltherThan (int maxLogFileDays);
 
 			// The virtual methods are the entry points: the MT safe version locks them

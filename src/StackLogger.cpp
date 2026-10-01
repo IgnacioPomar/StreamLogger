@@ -59,6 +59,11 @@ namespace IgnacioPomar::Util::StreamLogger
 		}
 	}
 
+	bool StackLogger::isEnabled (LogLevel logLevel) const noexcept
+	{
+		return logLevel >= this->effectiveLevel.load (std::memory_order_relaxed);
+	}
+
 	void StackLogger::sendEvents (LogEventsSubscriber &subscriber, LogLevel logLevel)
 	{
 		for (auto &event : events)

@@ -74,6 +74,17 @@ All the configuration is in `lggr::Config`. The default values are in `StreamLog
 - **Date**: always `YYYY-MM-DD HH:MM:SS.mmm UTC`, with any compiler.
 - **Errors**: the errors while logging inside a destructor (the message builder, a timed event) never escape: they are reported in stderr.
 
+## Performance notes
+
+- A message below every configured level is discarded before formatting it: no stream is created and nothing is formatted. But the arguments of `<<` are always evaluated (C++ evaluates them before calling the operator). For expensive values, check the level first:
+
+```cpp
+if (lggr::debug.isEnabled())
+{
+	lggr::debug << "State: " << computeExpensiveDump();
+}
+```
+
 ## Example of use
 
 Here is a simple example demonstrating how to use StreamLogger in your application:

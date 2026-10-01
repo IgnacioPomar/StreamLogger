@@ -17,8 +17,10 @@
 #	endif
 
 #	include <exception>
+#	include <optional>
 #	include <sstream>
 #	include <string>
+#	include <utility>
 #	include "StreamLoggerConsts.h"
 #	include "StreamLoggerInterfaces.h"
 
@@ -64,6 +66,11 @@ namespace IgnacioPomar::Util::StreamLogger
 	{
 		public:
 			virtual void log (std::string &message) = 0;
+
+			// False if the message would be discarded: use it to avoid expensive computations
+			// (the arguments of << are always evaluated, but are not formatted if it is disabled)
+			virtual bool isEnabled () const = 0;
+
 			template <typename T> friend LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value);
 	};
 
@@ -82,7 +89,8 @@ namespace IgnacioPomar::Util::StreamLogger
 			TimedEvent (EventContainer &event);
 			TimedEvent (const TimedEvent &)            = delete;    // the event is finished on destruction
 			TimedEvent &operator= (const TimedEvent &) = delete;
-			void log (std::string &message);
+			void log (std::string &message) override;
+			bool isEnabled () const override;
 	};
 
 	/**
@@ -95,7 +103,8 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			const LogLevel level;
 
-			void log (std::string &message);
+			void log (std::string &message) override;
+			bool isEnabled () const override;
 
 			TimedEvent startTimedEvent ();
 	};
@@ -113,21 +122,33 @@ namespace IgnacioPomar::Util::StreamLogger
 	class LogMessageBuilder
 	{
 		public:
-			LogMessageBuilder (BaseStreamLogger &logger)
-			    : logger (logger) {};
+			// If the logger is disabled, nothing is formatted (nor the stream is created)
+			explicit LogMessageBuilder (BaseStreamLogger &logger)
+			{
+				if (logger.isEnabled())
+				{
+					this->logger = &logger;
+					this->message.emplace();
+				}
+			};
 			LogMessageBuilder (const LogMessageBuilder &other) = delete;
 			LogMessageBuilder (LogMessageBuilder &&other) noexcept
-			    : logger (other.logger)
+			    : logger (std::exchange (other.logger, nullptr))
 			    , message (std::move (other.message)) {};
+
 			// The destructor can not throw: the errors are reported in stderr
 			~LogMessageBuilder()
 			{
+				if (this->logger == nullptr)
+				{
+					return;
+				}
 				try
 				{
-					if (this->message.rdbuf()->in_avail() > 0)
+					std::string msg = std::move (*this->message).str();
+					if (!msg.empty())
 					{
-						std::string msg = message.str();
-						logger.log (msg);
+						logger->log (msg);
 					}
 				}
 				catch (const std::exception &e)
@@ -144,14 +165,17 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			template <typename T> LogMessageBuilder &operator<< (const T &msg)
 			{
-				this->message << msg;
+				if (this->logger != nullptr)
+				{
+					*this->message << msg;
+				}
 				return *this;
 			}
 
 		private:
-			BaseStreamLogger &logger;
+			BaseStreamLogger *logger = nullptr;
 
-			std::stringstream message;
+			std::optional<std::ostringstream> message;
 	};
 
 	template <typename T> LogMessageBuilder operator<< (BaseStreamLogger &logger, const T &value)

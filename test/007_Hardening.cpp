@@ -14,9 +14,21 @@ using Catch::Matchers::Matches;
 
 namespace
 {
+	// Counts how many times it is formatted
+	struct Counted
+	{
+			int *count;
+	};
+	std::ostream &operator<< (std::ostream &os, const Counted &counted)
+	{
+		++*counted.count;
+		return os << "counted";
+	}
+
 	class FakeLogger : public lggr::BaseStreamLogger
 	{
 		public:
+			bool enabled    = true;
 			bool throwInLog = false;
 			std::vector<std::string> logged;
 
@@ -28,8 +40,65 @@ namespace
 				}
 				logged.push_back (message);
 			}
+			bool isEnabled () const override
+			{
+				return enabled;
+			}
 	};
 }    // namespace
+
+//-------------- Filter before format ----------------
+
+TEST_CASE ("A disabled logger does not format the message", "[filter]")
+{
+	FakeLogger logger;
+	int count = 0;
+
+	logger.enabled = false;
+	logger << "Value: " << Counted {&count};
+	CHECK (count == 0);
+	CHECK (logger.logged.empty());
+
+	logger.enabled = true;
+	logger << "Value: " << Counted {&count};
+	CHECK (count == 1);
+	CHECK (logger.logged == std::vector<std::string> {"Value: counted"});
+}
+
+TEST_CASE ("An empty message is not logged", "[filter]")
+{
+	FakeLogger logger;
+	logger << "";
+	CHECK (logger.logged.empty());
+}
+
+TEST_CASE ("isEnabled follows the configuration", "[filter]")
+{
+	lggr::StackLogger logger;
+	silence (logger);
+	logger.setStackLevel (lggr::LL::WARN);
+	CHECK_FALSE (logger.isEnabled (lggr::LL::INFO));
+	CHECK (logger.isEnabled (lggr::LL::WARN));
+
+	CollectingSubscriber collector;
+	logger.subscribePushEvents (collector, lggr::LL::DEBUG);
+	CHECK (logger.isEnabled (lggr::LL::DEBUG));
+	CHECK_FALSE (logger.isEnabled (lggr::LL::TRACE));
+	logger.unsubscribePushEvents (collector);
+	CHECK_FALSE (logger.isEnabled (lggr::LL::DEBUG));
+}
+
+TEST_CASE ("The static loggers know if they are enabled", "[filter]")
+{
+	lggr::Config::setConsoleLevel (lggr::LL::OFF);
+	lggr::Config::setStackLevel (lggr::LL::INFO);
+	CHECK_FALSE (lggr::trace.isEnabled());
+	CHECK (lggr::info.isEnabled());
+
+	CollectingSubscriber collector;
+	ScopedPushSubscription subscription (collector, lggr::LL::TRACE);
+	CHECK (lggr::trace.isEnabled());
+}
 
 //-------------- Errors ----------------
 

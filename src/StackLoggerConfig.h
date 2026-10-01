@@ -8,6 +8,7 @@
 #ifndef _STACK_LOGGER_CONFIG_H_
 #	define _STACK_LOGGER_CONFIG_H_
 
+#	include <atomic>
 #	include <list>
 #	include <string>
 #	include <fstream>
@@ -54,7 +55,8 @@ namespace IgnacioPomar::Util::StreamLogger
 			LogLevel fileLevel;
 			LogLevel stackLevel;
 			LogLevel subscriberLevel;
-			LogLevel effectiveLevel;
+			// Read without lock, to discard the messages before formatting them
+			std::atomic<LogLevel> effectiveLevel;
 
 			// In the current implementation, the Timed Events are, while running, in the stack
 			// That means that it can have more than maxStoredEvents events
