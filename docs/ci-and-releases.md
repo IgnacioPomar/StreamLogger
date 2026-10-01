@@ -26,8 +26,7 @@ Every push to any branch, and every pull request, runs these steps:
    cmake --build --preset conan-release
    ctest --preset conan-release --output-on-failure
    ```
-   The tester (`StreamLoggerTester`) is compiled with the sources, not linked to the library, because it uses
-   internal classes that the shared library does not export.
+   The tester (`StreamLoggerTester`) links the library (shared by default), and also uses its internal classes.
 6. **Conan package**: `conan create . --build=missing -s compiler.cppstd=20` builds the package with the default
    options (shared library) and runs `test_package/`: a small program that finds, links and loads
    `libStreamLogger.so`, as a consumer would.
@@ -61,7 +60,8 @@ not get out of sync.
 ### Numbering: `MAJOR.MINOR.PATCH`
 
 The version follows [Semantic Versioning](https://semver.org), applied to the **public API and the ABI** of the
-shared library (the symbols marked with `LGGR_API`, and the layout of the exported classes).
+shared library: what the installed headers (`include/StreamLogger/`) declare, and the layout of their classes.
+The internal classes (`src/`) are not installed, so the consumers can not depend on them.
 
 **From 1.0.0:**
 
