@@ -4,7 +4,6 @@
  *	Copyright	(C) 2024  Ignacio Pomar Ballestero
  ********************************************************************************************/
 
-#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <iostream>
@@ -25,6 +24,9 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	namespace
 	{
+		// Like the file buffer: written when full, even if the flush policy does not say so
+		constexpr std::size_t CONSOLE_BUFFER_SIZE = 8192;
+
 		// > 0 while this thread is inside a subscriber callback: its events are not pushed (avoids loops)
 		thread_local int callbackDepth = 0;
 
@@ -153,6 +155,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			slot->owner = nullptr;
 		}
 
+		this->flushConsole();
 		if (logfile.is_open())
 		{
 			this->logfile.flush();
@@ -366,20 +369,56 @@ namespace IgnacioPomar::Util::StreamLogger
 
 	void StackLogger::sendToConsole (const EventContainer &event, const std::string &line)
 	{
-		if (event.logLevel >= consoleLevel)
+		if (event.logLevel < consoleLevel)
 		{
-			if (useColors)
-			{
-				setConsoleColor (levelColors [levelIndex (event.logLevel)]);
-			}
-			// A single write per line
+			return;
+		}
+
+		if (useColors && !IN_BAND_COLORS)
+		{
+			// The color is applied to the console, not to the text: each line is written with its color
+			this->flushConsole();
+			setConsoleColor (levelColors [levelIndex (event.logLevel)]);
 			std::clog.write (line.data(), static_cast<std::streamsize> (line.size()));
 			std::clog.flush();
-			if (useColors)
-			{
-				resetConsoleColor();
-			}
+			resetConsoleColor();
+			return;
 		}
+
+		if (useColors)
+		{
+			this->consoleBuffer += ansiColor (levelColors [levelIndex (event.logLevel)]);
+			this->consoleBuffer += line;
+			this->consoleBuffer += ansiReset();
+		}
+		else
+		{
+			this->consoleBuffer += line;
+		}
+
+		bool mustFlush = this->consoleFlush.countEvent (event.logLevel, std::chrono::system_clock::now());
+		if (mustFlush || this->consoleBuffer.size() >= CONSOLE_BUFFER_SIZE)
+		{
+			this->flushConsole();
+		}
+	}
+
+	void StackLogger::flushConsole()
+	{
+		if (!this->consoleBuffer.empty())
+		{
+			// A single write
+			std::clog.write (this->consoleBuffer.data(), static_cast<std::streamsize> (this->consoleBuffer.size()));
+			std::clog.flush();
+			this->consoleBuffer.clear();
+		}
+		this->consoleFlush.flushed (std::chrono::system_clock::now());
+	}
+
+	void StackLogger::flush()
+	{
+		this->flushConsole();
+		this->flushFile();
 	}
 
 	void StackLogger::sendToFile (EventContainer &event, const std::string &line, PendingDispatch &pending)
@@ -435,13 +474,7 @@ namespace IgnacioPomar::Util::StreamLogger
 			{
 				this->logfile.write (line.data(), static_cast<std::streamsize> (line.size()));
 
-				// Flush policy: by number of events of the level, or by time
-				int lvl  = levelIndex (event.logLevel);
-				auto now = std::chrono::system_clock::now();
-				++this->pendingFlush [lvl];
-				bool byCount = flushEvery [lvl] != 0 && pendingFlush [lvl] >= flushEvery [lvl];
-				bool byTime  = flushInterval.count() > 0 && now - lastFlush >= flushInterval;
-				if (byCount || byTime)
+				if (this->fileFlush.countEvent (event.logLevel, std::chrono::system_clock::now()))
 				{
 					this->flushFile();
 				}
@@ -455,8 +488,7 @@ namespace IgnacioPomar::Util::StreamLogger
 		{
 			this->logfile.flush();
 		}
-		std::fill (std::begin (pendingFlush), std::end (pendingFlush), 0u);
-		this->lastFlush = std::chrono::system_clock::now();
+		this->fileFlush.flushed (std::chrono::system_clock::now());
 	}
 
 	void StackLogger::queueForSubscribers (const EventContainer &event, bool useTimed, PendingDispatch &pending)

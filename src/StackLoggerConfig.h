@@ -22,6 +22,27 @@
 
 namespace IgnacioPomar::Util::StreamLogger
 {
+	/**
+	 * When to flush an output: after N events of a level, or when the last flush is older than the interval
+	 * (checked when writing an event)
+	 */
+	class FlushPolicy
+	{
+		public:
+			FlushPolicy (const unsigned int (&every) [6], std::chrono::milliseconds interval);
+
+			void setEvery (LogLevel logLevel, unsigned int events);
+
+			// Counts the written event: true if the output must be flushed
+			bool countEvent (LogLevel logLevel, TimePoint now);
+			void flushed (TimePoint now);
+
+			unsigned int every [6];      // 0: never by count
+			unsigned int pending [6];    // Events written since the last flush
+			std::chrono::milliseconds interval;    // 0: disabled
+			TimePoint lastFlush;
+	};
+
 	class StackLoggerConfig
 	{
 		public:    // methods
@@ -40,6 +61,8 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			void setFlushEvery (LogLevel logLevel, unsigned int events);
 			void setFlushInterval (std::chrono::milliseconds interval);
+			void setConsoleFlushEvery (LogLevel logLevel, unsigned int events);
+			void setConsoleFlushInterval (std::chrono::milliseconds interval);
 
 			void resetSubscriberLevel ();
 			void addSubscriberLevel (LogLevel logLevel);
@@ -74,11 +97,9 @@ namespace IgnacioPomar::Util::StreamLogger
 			std::string logFilePattern;
 			bool hasRotation;
 
-			// Flush policy of the log file (see DEFAULTS::FLUSH_EVERY)
-			unsigned int flushEvery [6];
-			unsigned int pendingFlush [6];    // Events written since the last flush
-			std::chrono::milliseconds flushInterval;
-			TimePoint lastFlush;
+			// See DEFAULTS::FLUSH_EVERY and DEFAULTS::CONSOLE_FLUSH_EVERY
+			FlushPolicy fileFlush;
+			FlushPolicy consoleFlush;
 	};
 }    // namespace IgnacioPomar::Util::StreamLogger
 

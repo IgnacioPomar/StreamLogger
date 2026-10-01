@@ -51,6 +51,12 @@ namespace IgnacioPomar::Util::StreamLogger
 		LGGR_API void setFlushEvery (LogLevel logLevel, unsigned int events);
 		// ... or when an event is written and the last flush is older than the interval (0: disabled)
 		LGGR_API void setFlushInterval (std::chrono::milliseconds interval);
+
+		// The same for the console (it has its own buffer)
+		LGGR_API void setConsoleFlushEvery (LogLevel logLevel, unsigned int events);
+		LGGR_API void setConsoleFlushInterval (std::chrono::milliseconds interval);
+
+		// Flushes the console and the log file
 		LGGR_API void flush ();
 	};    // namespace Config
 

@@ -79,6 +79,9 @@ namespace IgnacioPomar::Util::StreamLogger
 
 			std::ofstream logfile;
 
+			// The console has its own buffer: std::clog is not buffered
+			std::string consoleBuffer;
+
 			// Prevent illegal usage
 			StackLogger (const StackLogger &)            = delete;    // no copies
 			StackLogger &operator= (const StackLogger &) = delete;    // no self-assignments
@@ -111,6 +114,8 @@ namespace IgnacioPomar::Util::StreamLogger
 			void fillEvent (EventContainer &event, std::string &eventTxt);
 			void fillElapsedTime (EventContainer &event);
 			void flushFile ();
+			void flushConsole ();
+			void flush ();    // Console and file
 
 			// Without lock: the definitive check is done in log()
 			bool isEnabled (LogLevel logLevel) const noexcept;

@@ -78,6 +78,16 @@ namespace IgnacioPomar::Util::StreamLogger
 		return _isatty (_fileno (stderr)) && std::getenv ("NO_COLOR") == nullptr;
 	}
 
+	const char *ansiColor (LogColor)
+	{
+		return "";
+	}
+
+	const char *ansiReset ()
+	{
+		return "";
+	}
+
 }    // namespace IgnacioPomar::Util::StreamLogger
 
 #else    //_WIN32
@@ -87,34 +97,44 @@ namespace IgnacioPomar::Util::StreamLogger
 namespace IgnacioPomar::Util::StreamLogger
 {
 
-	void setConsoleColor (LogColor color)
+	const char *ansiColor (LogColor color)
 	{
 		switch (color)
 		{
-		case LogColor::BLACK: std::clog << "\033[30m"; break;
-		case LogColor::WHITE: std::clog << "\033[37m"; break;
-		case LogColor::GREY: std::clog << "\033[90m"; break;
-		case LogColor::RED: std::clog << "\033[31m"; break;
-		case LogColor::LIGHTRED: std::clog << "\033[91m"; break;
-		case LogColor::GREEN: std::clog << "\033[32m"; break;
-		case LogColor::YELLOW: std::clog << "\033[33m"; break;
-		case LogColor::BLUE: std::clog << "\033[34m"; break;
-		case LogColor::MAGENTA: std::clog << "\033[35m"; break;
-		case LogColor::CYAN: std::clog << "\033[36m"; break;
+		case LogColor::BLACK: return "\033[30m";
+		case LogColor::WHITE: return "\033[37m";
+		case LogColor::GREY: return "\033[90m";
+		case LogColor::RED: return "\033[31m";
+		case LogColor::LIGHTRED: return "\033[91m";
+		case LogColor::GREEN: return "\033[32m";
+		case LogColor::YELLOW: return "\033[33m";
+		case LogColor::BLUE: return "\033[34m";
+		case LogColor::MAGENTA: return "\033[35m";
+		case LogColor::CYAN: return "\033[36m";
 		/*
-		case LogColor::LIGHTGREEN: std::clog << "\033[92m"; break;
-		case LogColor::LIGHTYELLOW: std::clog << "\033[93m"; break;
-		case LogColor::LIGHTBLUE: std::clog << "\033[94m"; break;
-		case LogColor::LIGHTMAGENTA: std::clog << "\033[95m"; break;
-		case LogColor::LIGHTCYAN: std::clog << "\033[96m"; break;
+		case LogColor::LIGHTGREEN: return "\033[92m";
+		case LogColor::LIGHTYELLOW: return "\033[93m";
+		case LogColor::LIGHTBLUE: return "\033[94m";
+		case LogColor::LIGHTMAGENTA: return "\033[95m";
+		case LogColor::LIGHTCYAN: return "\033[96m";
 		*/
-		default: break;
+		default: return "";
 		}
+	}
+
+	const char *ansiReset ()
+	{
+		return "\033[0m";
+	}
+
+	void setConsoleColor (LogColor color)
+	{
+		std::clog << ansiColor (color);
 	}
 
 	void resetConsoleColor ()
 	{
-		std::clog << "\033[0m";
+		std::clog << ansiReset();
 	}
 
 	bool isColorConsole ()

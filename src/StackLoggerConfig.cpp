@@ -80,9 +80,19 @@ namespace IgnacioPomar::Util::StreamLogger
 			getLogger().runLocked ([&] { getLogger().setFlushInterval (interval); });
 		}
 
+		void setConsoleFlushEvery (LogLevel logLevel, unsigned int events)
+		{
+			getLogger().runLocked ([&] { getLogger().setConsoleFlushEvery (logLevel, events); });
+		}
+
+		void setConsoleFlushInterval (std::chrono::milliseconds interval)
+		{
+			getLogger().runLocked ([&] { getLogger().setConsoleFlushInterval (interval); });
+		}
+
 		void flush ()
 		{
-			getLogger().runLocked ([&] { getLogger().flushFile(); });
+			getLogger().runLocked ([&] { getLogger().flush(); });
 		}
 	};    // namespace Config
 
@@ -134,18 +144,68 @@ namespace IgnacioPomar::Util::StreamLogger
 		this->setEffectiveLevel();
 	}
 
-	void StackLoggerConfig::setFlushEvery (LogLevel logLevel, unsigned int events)
+	//--------------  Flush policy ----------------
+	FlushPolicy::FlushPolicy (const unsigned int (&every) [6], std::chrono::milliseconds interval)
+	    : interval (interval)
+	    , lastFlush ()
+	{
+		for (int i = 0; i < 6; i++)
+		{
+			this->every [i]   = every [i];
+			this->pending [i] = 0;
+		}
+	}
+
+	void FlushPolicy::setEvery (LogLevel logLevel, unsigned int events)
 	{
 		int lvl = static_cast<int> (logLevel);
 		if (lvl < 6)    // OFF events are never written
 		{
-			this->flushEvery [lvl] = events;
+			this->every [lvl] = events;
 		}
+	}
+
+	bool FlushPolicy::countEvent (LogLevel logLevel, TimePoint now)
+	{
+		int lvl = static_cast<int> (logLevel);
+		if (lvl > 5)
+		{
+			lvl = static_cast<int> (LogLevel::FATAL);
+		}
+		++this->pending [lvl];
+		bool byCount = this->every [lvl] != 0 && this->pending [lvl] >= this->every [lvl];
+		bool byTime  = this->interval.count() > 0 && now - this->lastFlush >= this->interval;
+		return byCount || byTime;
+	}
+
+	void FlushPolicy::flushed (TimePoint now)
+	{
+		for (auto &count : this->pending)
+		{
+			count = 0;
+		}
+		this->lastFlush = now;
+	}
+
+	//--------------  Configuration functions (continued) ----------------
+	void StackLoggerConfig::setFlushEvery (LogLevel logLevel, unsigned int events)
+	{
+		this->fileFlush.setEvery (logLevel, events);
 	}
 
 	void StackLoggerConfig::setFlushInterval (std::chrono::milliseconds interval)
 	{
-		this->flushInterval = interval;
+		this->fileFlush.interval = interval;
+	}
+
+	void StackLoggerConfig::setConsoleFlushEvery (LogLevel logLevel, unsigned int events)
+	{
+		this->consoleFlush.setEvery (logLevel, events);
+	}
+
+	void StackLoggerConfig::setConsoleFlushInterval (std::chrono::milliseconds interval)
+	{
+		this->consoleFlush.interval = interval;
 	}
 
 	void StackLoggerConfig::resetSubscriberLevel()
@@ -190,6 +250,8 @@ namespace IgnacioPomar::Util::StreamLogger
 	}
 
 	StackLoggerConfig::StackLoggerConfig()
+	    : fileFlush (DEFAULTS::FLUSH_EVERY, DEFAULTS::FLUSH_INTERVAL)
+	    , consoleFlush (DEFAULTS::CONSOLE_FLUSH_EVERY, DEFAULTS::CONSOLE_FLUSH_INTERVAL)
 	{
 		this->maxStoredEvents = DEFAULTS::STACK_SIZE;
 		this->stackLevel      = DEFAULTS::STACK_LEVEL;
@@ -212,14 +274,6 @@ namespace IgnacioPomar::Util::StreamLogger
 		this->levelColors [5] = DEFAULTS::COLOR_FATAL;
 
 		this->setColorMode (DEFAULTS::COLOR_MODE);
-
-		for (int i = 0; i < 6; i++)
-		{
-			this->flushEvery [i]   = DEFAULTS::FLUSH_EVERY [i];
-			this->pendingFlush [i] = 0;
-		}
-		this->flushInterval = DEFAULTS::FLUSH_INTERVAL;
-		this->lastFlush     = TimePoint {};
 	}
 
 	void StackLoggerConfig::setStackSize (unsigned int stackSize)
